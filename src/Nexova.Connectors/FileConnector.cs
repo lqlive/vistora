@@ -1,5 +1,5 @@
 ﻿using Apache.DataFusion;
-using Nexova.Core.Connectors;
+using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 
 namespace Nexova.Connectors;

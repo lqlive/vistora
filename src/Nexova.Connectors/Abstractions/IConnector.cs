@@ -1,7 +1,7 @@
-﻿using Apache.DataFusion;
+using Apache.DataFusion;
 using Nexova.Core.Entities;
 
-namespace Nexova.Core.Connectors;
+namespace Nexova.Connectors.Abstractions;
 
 public interface IConnector
 {

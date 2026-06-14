@@ -1,6 +1,6 @@
-﻿using Nexova.Core.Entities;
+using Nexova.Core.Entities;
 
-namespace Nexova.Core.Connectors;
+namespace Nexova.Connectors.Abstractions;
 
 public interface IQueryExecutor
 {

@@ -1,6 +1,6 @@
 ﻿using Apache.DataFusion;
 using Microsoft.Extensions.DependencyInjection;
-using Nexova.Core.Connectors;
+using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 
 namespace Nexova.Connectors;

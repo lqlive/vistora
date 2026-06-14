@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Nexova.Core.Connectors;
+using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 using Nexova.Core.Management;
 
