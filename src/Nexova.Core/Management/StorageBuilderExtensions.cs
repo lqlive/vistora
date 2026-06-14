@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Nexova.Core.Management;
 
-public static class StorageBuilderExtensions
+public static partial class NexovaServiceCollectionExtensions
 {
     public static INexovaBuilder AddFileStorage(this INexovaBuilder builder)
     {

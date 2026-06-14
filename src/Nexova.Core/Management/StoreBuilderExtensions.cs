@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Nexova.Core.Management;
 
-public static class StoreBuilderExtensions
+public static partial class NexovaServiceCollectionExtensions
 {
     public static INexovaBuilder AddInMemoryStore(this INexovaBuilder builder)
     {
