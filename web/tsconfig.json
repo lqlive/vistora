@@ -24,10 +24,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@/components/*": ["src/components/*"],
-      "@/pages/*": ["src/pages/*"],
-      "@/types/*": ["src/types/*"],
-      "@/utils/*": ["src/utils/*"]
+      "@/features/*": ["src/features/*"],
+      "@/shared/*": ["src/shared/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/types": ["src/types"],
+      "@/mocks/*": ["src/mocks/*"]
     }
   },
   "include": ["src"],

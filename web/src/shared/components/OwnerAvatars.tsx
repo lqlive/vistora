@@ -1,5 +1,5 @@
 import React from 'react';
-import type { BiOwner } from '../api/types';
+import type { BiOwner } from '../../types';
 
 interface OwnerAvatarsProps {
   owners: BiOwner[];

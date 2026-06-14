@@ -8,11 +8,11 @@ import {
   XMarkIcon,
   ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
-import PageHeader from '../components/PageHeader';
-import FilterBar from '../components/FilterBar';
-import DataTable, { Column } from '../components/DataTable';
-import Tag from '../components/Tag';
-import Select from '../components/Select';
+import PageHeader from '../../shared/components/PageHeader';
+import FilterBar from '../../shared/components/FilterBar';
+import DataTable, { Column } from '../../shared/components/DataTable';
+import Tag from '../../shared/components/Tag';
+import Select from '../../shared/components/Select';
 import {
   addFileToDataSource,
   createDataSource,
@@ -22,13 +22,13 @@ import {
   mapDataSourceToItem,
   updateDataSource,
   uploadDataSourceFile,
-} from '../api/client';
+} from './api';
 import type {
   DataSourceConfiguration,
   DataSourceItem,
   DataSourceResponse,
   FileUploadResponse,
-} from '../api/types';
+} from '../../types';
 
 const statusVariant = (s: DataSourceItem['status']) =>
   s === 'connected' ? 'success' : s === 'syncing' ? 'info' : 'error';

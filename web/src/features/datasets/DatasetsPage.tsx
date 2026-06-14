@@ -6,13 +6,13 @@ import {
   TrashIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
-import PageHeader from '../components/PageHeader';
-import FilterBar from '../components/FilterBar';
-import DataTable, { Column } from '../components/DataTable';
-import Tag from '../components/Tag';
-import OwnerAvatars from '../components/OwnerAvatars';
-import { listDatasets, mapDatasetToItem } from '../api/client';
-import type { DatasetItem } from '../api/types';
+import PageHeader from '../../shared/components/PageHeader';
+import FilterBar from '../../shared/components/FilterBar';
+import DataTable, { Column } from '../../shared/components/DataTable';
+import Tag from '../../shared/components/Tag';
+import OwnerAvatars from '../../shared/components/OwnerAvatars';
+import { listDatasets, mapDatasetToItem } from './api';
+import type { DatasetItem } from '../../types';
 
 const Datasets: React.FC = () => {
   const [datasets, setDatasets] = useState<DatasetItem[]>([]);

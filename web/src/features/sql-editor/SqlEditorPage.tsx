@@ -22,14 +22,15 @@ import {
   Square3Stack3DIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
-import { getDataSource, listDataSources, listEngineTables, queryEngine } from '../api/client';
+import { getDataSource, listDataSources } from '../datasources/api';
+import { listEngineTables, queryEngine } from '../../lib/apiClient/engine';
 import type {
   DataSourceResponse,
   EngineColumnInfo,
   EngineQueryResult,
   EngineTableInfo,
   GridColumnType,
-} from '../api/types';
+} from '../../types';
 
 // ---------------------------------------------------------------------------
 // Explorer tree

@@ -15,20 +15,15 @@ import {
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
-import {
-  addFileToDataSource,
-  getDataSource,
-  listEngineTables,
-  queryEngine,
-  uploadDataSourceFile,
-} from '../api/client';
+import { addFileToDataSource, getDataSource, uploadDataSourceFile } from './api';
+import { listEngineTables, queryEngine } from '../../lib/apiClient/engine';
 import type {
   DataSourceResponse,
   EngineColumnInfo,
   EngineQueryResult,
   EngineTableInfo,
   GridColumnType,
-} from '../api/types';
+} from '../../types';
 
 const TypeBadge: React.FC<{ type: GridColumnType }> = ({ type }) => {
   if (type === 'date') {

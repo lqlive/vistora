@@ -9,14 +9,14 @@ import {
   TableCellsIcon,
   HashtagIcon,
 } from '@heroicons/react/24/outline';
-import PageHeader from '../components/PageHeader';
-import FilterBar from '../components/FilterBar';
-import DataTable, { Column } from '../components/DataTable';
-import Tag from '../components/Tag';
-import OwnerAvatars from '../components/OwnerAvatars';
-import FavoriteStar from '../components/FavoriteStar';
-import { charts as initialCharts } from '../api/mockData';
-import type { ChartItem, ChartVizType } from '../api/types';
+import PageHeader from '../../shared/components/PageHeader';
+import FilterBar from '../../shared/components/FilterBar';
+import DataTable, { Column } from '../../shared/components/DataTable';
+import Tag from '../../shared/components/Tag';
+import OwnerAvatars from '../../shared/components/OwnerAvatars';
+import FavoriteStar from '../../shared/components/FavoriteStar';
+import { charts as initialCharts } from '../../mocks/mockData';
+import type { ChartItem, ChartVizType } from '../../types';
 
 const vizIcon = (viz: ChartVizType) => {
   switch (viz) {

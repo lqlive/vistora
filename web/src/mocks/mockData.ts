@@ -4,7 +4,7 @@ import type {
   DatasetItem,
   DatasourcePreview,
   DataSourceItem,
-} from './types';
+} from '../types';
 
 const owner = (name: string): { name: string; initials: string } => ({
   name,

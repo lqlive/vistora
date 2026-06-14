@@ -1,19 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Squares2X2Icon,
   ChartBarIcon,
   TableCellsIcon,
   CircleStackIcon,
   CommandLineIcon,
-  HomeIcon,
   ChevronDownIcon,
   Bars3Icon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
-import { useAuth } from '../../auth/AuthContext';
-import { useClickOutside } from '../../hooks/useClickOutside';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -34,7 +32,6 @@ const navSections: NavSection[] = [
   {
     label: 'Overview',
     items: [
-      { name: 'Home', href: '/', icon: HomeIcon },
       { name: 'Dashboards', href: '/dashboards', icon: Squares2X2Icon },
       { name: 'Charts', href: '/charts', icon: ChartBarIcon },
     ],
@@ -54,16 +51,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } finally {
-      navigate('/login', { replace: true });
-    }
-  };
 
   const isActive = (href: string) =>
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
@@ -161,13 +148,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 onClick={() => setUserMenuOpen((o) => !o)}
                 className="flex items-center gap-2 group"
               >
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-full" />
-                ) : (
-                  <div className="h-8 w-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-semibold">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                )}
+                <div className="h-8 w-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-semibold">
+                  U
+                </div>
                 <ChevronDownIcon
                   className={classNames(
                     'h-3 w-3 text-gray-400 transition-transform',
@@ -177,18 +160,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </button>
               {userMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-50">
-                  <div className="px-4 py-3 border-b border-gray-50">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {user?.name || 'Guest'}
-                    </div>
-                    <div className="text-xs text-gray-400 truncate">{user?.email}</div>
+                  <div className="px-4 py-3">
+                    <div className="text-sm font-medium text-gray-900 truncate">Guest</div>
+                    <div className="text-xs text-gray-400 truncate">Not signed in</div>
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    Log out
-                  </button>
                 </div>
               )}
             </div>
