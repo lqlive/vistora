@@ -1,12 +1,13 @@
 using Nexova.Core.Configuration;
 using Nexova.Core.Entities;
+using Nexova.Core.Storage;
 using Nexova.Core.Stores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Nexova.Core.Management;
 
-public static partial class NexovaServiceCollectionExtensions
+public static class INexovaBuilderExtensions
 {
     public static INexovaBuilder AddInMemoryStore(this INexovaBuilder builder)
     {
@@ -15,6 +16,16 @@ public static partial class NexovaServiceCollectionExtensions
         var services = builder.Services;
         services.AddKeyedScoped<IDataSourceStore, InMemoryDataSourceStore>(InMemoryStoreOptions.Name);
         services.AddKeyedScoped<IDatasetStore, InMemoryDatasetStore>(InMemoryStoreOptions.Name);
+
+        return builder;
+    }
+
+    public static INexovaBuilder AddFileStorage(this INexovaBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var services = builder.Services;
+        services.AddKeyedTransient<IStorageService, FileStorageService>(FileSystemStorageOptions.Name);
 
         return builder;
     }

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Nexova.Core.Management;
 
-public static partial class NexovaServiceCollectionExtensions
+public static class NexovaServiceCollectionExtensions
 {
     public static INexovaBuilder AddNexovaCore(this IServiceCollection services)
     {
