@@ -1,4 +1,5 @@
 ﻿using Nexova.Core.Configuration;
+using Nexova.Core.Configuration.Validators;
 using Nexova.Core.Entities;
 using Nexova.Core.Storage;
 using Nexova.Core.Stores;
@@ -45,7 +46,11 @@ public static class NexovaServiceCollectionExtensions
             .BindConfiguration(FileSystemStorageOptions.SectionName);
         services.AddOptions<DatabaseOptions>()
             .BindConfiguration(DatabaseOptions.SectionName);
-        
+
+        services.AddSingleton<IValidateOptions<StorageOptions>, StorageOptionsValidator>();
+        services.AddSingleton<IValidateOptions<FileSystemStorageOptions>, FileSystemStorageOptionsValidator>();
+        services.AddSingleton<IValidateOptions<DatabaseOptions>, DatabaseOptionsValidator>();
+
         return services;
     }
 }

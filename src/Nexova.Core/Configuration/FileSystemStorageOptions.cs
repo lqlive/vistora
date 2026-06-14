@@ -4,5 +4,5 @@ public class FileSystemStorageOptions
 {
     public const string Name = "FileSystem";
     public const string SectionName = "FileSystemStorage";
-    public string Path { get; set; } = "storage";
+    public required string Path { get; set; } ;
 }
