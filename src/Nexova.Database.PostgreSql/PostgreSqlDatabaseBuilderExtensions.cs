@@ -1,6 +1,4 @@
-﻿using Nexova.Core.Stores;
-using Nexova.Core.Entities;
-using Nexova.Core.Configuration;
+﻿using Nexova.Core.Configuration;
 using Nexova.Core.Management;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,16 +14,13 @@ public static class PostgreSqlDatabaseBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var services = builder.Services;
-
-        services.AddDbContext<IContext, PostgreSqlContext>((provider, options) =>
-        {
-            var databaseOptions = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-            options.UseNpgsql(databaseOptions.ConnectionString);
-        });
-
-        services.AddKeyedScoped<IDataSourceStore, PostgreSqlDataSourceStore>(Name);
-        services.AddKeyedScoped<IDatasetStore, PostgreSqlDatasetStore>(Name);
+        builder.AddDbContextProvider<PostgreSqlContext, PostgreSqlDataSourceStore, PostgreSqlDatasetStore>(
+            Name,
+            (provider, options) =>
+            {
+                var databaseOptions = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+                options.UseNpgsql(databaseOptions.ConnectionString);
+            });
 
         return builder;
     }
