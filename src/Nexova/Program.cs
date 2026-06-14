@@ -1,3 +1,4 @@
+using FluentValidation;
 using Nexova.Core.Management;
 using Nexova.Database.PostgreSql;
 using Nexova.DataSources;
@@ -13,6 +14,7 @@ builder.Services.AddNexovaCore()
     .AddAwsS3Storage();
 
 builder.Services.AddScoped<DataSourceService>();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 var app = builder.Build();
 
