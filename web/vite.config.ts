@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // The query engine is hosted in-process by Nexova, so it is reached via /api/query/*.
       '/api': {
-        target: 'http://localhost:5101',
+        target: 'http://localhost:5007',
         changeOrigin: true,
       },
     },

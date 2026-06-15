@@ -24,6 +24,10 @@ public static class DataSourceErrors
         code: "DataSource.TypeTooLong",
         description: "Data source type must not exceed 64 characters");
 
+    public static Error TypeInvalid => Error.Validation(
+        code: "DataSource.TypeInvalid",
+        description: "Data source type is not supported");
+
     public static Error NameAlreadyExists => Error.Conflict(
         code: "DataSource.NameAlreadyExists",
         description: "A data source with the same name already exists");

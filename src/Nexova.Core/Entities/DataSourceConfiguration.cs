@@ -3,4 +3,5 @@
 public class DataSourceConfiguration
 {
     public string? ConnectionString { get; set; }
+    public string? StoragePath { get; set; }
 }
