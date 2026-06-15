@@ -2,7 +2,7 @@
 
 public enum DataSourceType
 {
-    File,
+    Files,
     MySql,
     PostgreSql,
     Sqlite,

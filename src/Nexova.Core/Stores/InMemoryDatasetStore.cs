@@ -5,7 +5,7 @@ namespace Nexova.Core.Stores;
 
 public class InMemoryDatasetStore : IDatasetStore
 {
-    private readonly ConcurrentDictionary<Guid, Dataset> datasets = [];
+    private static readonly ConcurrentDictionary<Guid, Dataset> datasets = [];
 
     public Task<bool> CreateAsync(Dataset dataset, CancellationToken cancellationToken)
     {

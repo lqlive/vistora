@@ -18,8 +18,14 @@ export const getDataSource = async (id: string): Promise<DataSourceResponse> => 
   return response.data;
 };
 
-export const createDataSource = async (request: DataSourceRequest): Promise<DataSourceResponse> => {
-  const response = await api.post<DataSourceResponse>('/api/datasources', request);
+export const createDataSource = async (
+  request: DataSourceRequest,
+  files: AddDataSourceFileRequest[] = []
+): Promise<DataSourceResponse> => {
+  const response = await api.post<DataSourceResponse>('/api/datasources', {
+    ...request,
+    files,
+  });
   return response.data;
 };
 

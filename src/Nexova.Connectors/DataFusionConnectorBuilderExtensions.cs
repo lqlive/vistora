@@ -11,7 +11,7 @@ public static class DataFusionConnectorBuilderExtensions
     {
         var services = builder.Services;
 
-        services.AddKeyedScoped<IConnector, FileConnector>(DataSourceType.File);
+        services.AddKeyedScoped<IConnector, FileConnector>(DataSourceType.Files);
         services.AddKeyedScoped<IConnector, PostgreSqlConnector>(DataSourceType.PostgreSql);
 
         services.AddScoped<IQueryExecutor, DataFusionQueryExecutor>();

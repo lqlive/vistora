@@ -14,7 +14,6 @@ import DataTable, { Column } from '../../shared/components/DataTable';
 import Tag from '../../shared/components/Tag';
 import Select from '../../shared/components/Select';
 import {
-  addFileToDataSource,
   createDataSource,
   deleteDataSource,
   getDataSource,
@@ -24,6 +23,7 @@ import {
   uploadDataSourceFile,
 } from './api';
 import type {
+  AddDataSourceFileRequest,
   DataSourceConfiguration,
   DataSourceItem,
   DataSourceResponse,
@@ -218,25 +218,26 @@ const Datasources: React.FC = () => {
     try {
       setSaving(true);
       const configuration = buildConfiguration(createForm, uploadDir, hasUploads);
-      const created = await createDataSource({
-        name,
-        type: createForm.type,
-        configuration,
-      });
+      const files: AddDataSourceFileRequest[] =
+        createForm.type === 'files'
+          ? uploads
+              .filter((entry) => entry.status === 'done' && entry.result)
+              .map((entry) => ({
+                ...entry.result!,
+                hasHeader: createForm.hasHeader,
+                delimiter: createForm.delimiter || ',',
+              }))
+          : [];
+      const created = await createDataSource(
+        {
+          name,
+          type: createForm.type,
+          configuration,
+        },
+        files
+      );
 
-      let dataSource = created;
-      if (createForm.type === 'files') {
-        for (const entry of uploads) {
-          if (entry.status !== 'done' || !entry.result) continue;
-          dataSource = await addFileToDataSource(created.id, {
-            ...entry.result,
-            hasHeader: createForm.hasHeader,
-            delimiter: createForm.delimiter || ',',
-          });
-        }
-      }
-
-      setDatasources((current) => [mapDataSourceToItem(dataSource), ...current]);
+      setDatasources((current) => [mapDataSourceToItem(created), ...current]);
       setCreateOpen(false);
       setCreateForm(defaultCreateForm);
       setUploads([]);

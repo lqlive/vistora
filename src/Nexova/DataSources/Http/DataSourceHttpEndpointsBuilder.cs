@@ -1,4 +1,5 @@
-﻿using Nexova.Core.Storage;
+﻿using Microsoft.AspNetCore.Mvc;
+using Nexova.Core.Storage;
 using Nexova.DataSources.Models;
 using Nexova.Extensions;
 
@@ -11,8 +12,9 @@ public static class DataSourceHttpEndpointsBuilder
         var api = app.MapGroup("/api/datasources");
         api.MapGet("/", List);
         api.MapGet("/{id:guid}", Get);
-        api.MapPost("/", Create)
-            .WithValidation<DataSourceRequest>();
+        api.MapPost("/", Create);
+        api.MapPost("/upload", UploadFile)
+            .DisableAntiforgery();
         api.MapPut("/{id:guid}", Update)
             .WithValidation<DataSourceRequest>();
         api.MapDelete("/{id:guid}", Delete);
@@ -40,14 +42,26 @@ public static class DataSourceHttpEndpointsBuilder
     }
 
     private static async Task<IResult> Create(
-        DataSourceRequest request,
+        CreateDataSourceRequest request,
         DataSourceService service,
-        IStorageService storage,
         CancellationToken cancellationToken)
     {
-        var result = await service.CreateAsync(request, storage, cancellationToken);
-        return result.Match(
+        var result = await service.CreateAsync(request, cancellationToken);
+        return result.Match<IResult>(
             created => Results.Created($"/api/datasources/{created.Id}", created),
+            errors => errors.ToProblem());
+    }
+
+    private static async Task<IResult> UploadFile(
+        IFormFile? file,
+        DataSourceService service,
+        IStorageService storage,
+        [FromForm] string? storageDirectory,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.UploadFileAsync(file, storageDirectory, storage, cancellationToken);
+        return result.Match<IResult>(
+            uploaded => Results.Ok(uploaded),
             errors => errors.ToProblem());
     }
 

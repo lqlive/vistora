@@ -6,7 +6,7 @@ namespace Nexova.Connectors;
 
 public sealed class FileConnector : IConnector
 {
-    public DataSourceType Type => DataSourceType.File;
+    public DataSourceType Type => DataSourceType.Files;
 
     public Task RegisterAsync(SessionContext context, string tableName,
         DataSource dataSource, CancellationToken cancellationToken)

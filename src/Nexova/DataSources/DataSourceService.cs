@@ -1,4 +1,5 @@
 ﻿using ErrorOr;
+using Microsoft.AspNetCore.Http;
 using Nexova.Core.Entities;
 using Nexova.Core.Storage;
 using Nexova.Core.Stores;
@@ -27,10 +28,14 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore)
     }
 
     public async Task<ErrorOr<DataSourceResponse>> CreateAsync(
-        DataSourceRequest request,
-        IStorageService storage,
+        CreateDataSourceRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return DataSourceErrors.NameRequired;
+        }
+
         if (!TryParseType(request.Type, out var type))
         {
             return DataSourceErrors.TypeInvalid;
@@ -38,12 +43,28 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore)
 
         var dataSource = new DataSource
         {
+            Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
             Type = type,
             Configuration = request.Configuration ?? new DataSourceConfiguration()
         };
 
-        await InitializeFileContainerAsync(dataSource, storage, cancellationToken);
+        foreach (var asset in request.Files)
+        {
+            dataSource.FileAssets.Add(new DataSourceFileAsset
+            {
+                Id = Guid.NewGuid(),
+                DataSourceId = dataSource.Id,
+                DataSource = dataSource,
+                FileName = asset.FileName,
+                StoragePath = asset.StoragePath,
+                ContentType = asset.ContentType,
+                Size = asset.Size,
+                HasHeader = asset.HasHeader,
+                Delimiter = asset.Delimiter,
+                Sheet = asset.Sheet
+            });
+        }
 
         var created = await dataSourceStore.CreateAsync(dataSource, cancellationToken);
         if (!created)
@@ -94,28 +115,61 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore)
         return Result.Success;
     }
 
+    public async Task<ErrorOr<FileUploadResponse>> UploadFileAsync(
+        IFormFile? file,
+        string? storageDirectory,
+        IStorageService storage,
+        CancellationToken cancellationToken = default)
+    {
+        if (file is null)
+        {
+            return DataSourceErrors.FileRequired;
+        }
+
+        if (file.Length == 0)
+        {
+            return DataSourceErrors.FileEmpty;
+        }
+
+        var fileName = Path.GetFileName(file.FileName);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return DataSourceErrors.FileRequired;
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType)
+            ? "application/octet-stream"
+            : file.ContentType;
+
+        var storagePath = BuildStoragePath(storageDirectory, fileName);
+
+        await using var content = file.OpenReadStream();
+        var result = await storage.PutAsync(storagePath, content, contentType, cancellationToken);
+        if (result == StoragePutResult.Conflict)
+        {
+            return DataSourceErrors.FileAlreadyExists;
+        }
+
+        return new FileUploadResponse(
+            fileName,
+            contentType,
+            file.Length,
+            storagePath,
+            storagePath);
+    }
+
+    private static string BuildStoragePath(string? storageDirectory, string fileName)
+    {
+        var uniqueName = $"{Guid.NewGuid():N}-{fileName}";
+        var directory = storageDirectory?.Trim().Trim('/');
+
+        return string.IsNullOrWhiteSpace(directory)
+            ? $"uploads/{uniqueName}"
+            : $"{directory}/{uniqueName}";
+    }
+
     private static bool TryParseType(string type, out DataSourceType parsed) =>
         Enum.TryParse(type.Trim(), ignoreCase: true, out parsed)
         && Enum.IsDefined(parsed);
 
-    private static Task InitializeFileContainerAsync(
-        DataSource dataSource,
-        IStorageService storage,
-        CancellationToken cancellationToken)
-    {
-        if (dataSource.Type != DataSourceType.File)
-        {
-            return Task.CompletedTask;
-        }
-
-        // Object storage has no real directories, so the container is just a path
-        // prefix derived from the data source id. Uploaded file assets live under it.
-        if (dataSource.Id == Guid.Empty)
-        {
-            dataSource.Id = Guid.NewGuid();
-        }
-
-        dataSource.Configuration.StoragePath = $"datasources/{dataSource.Id:N}";
-        return Task.CompletedTask;
-    }
 }
