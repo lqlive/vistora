@@ -6,5 +6,6 @@ public enum DataSourceType
     MySql,
     PostgreSql,
     Sqlite,
-    ClickHouse
+    ClickHouse,
+    MongoDb
 }

@@ -11,9 +11,7 @@ public sealed class PostgreSqlConnector : IConnector
     public Task RegisterAsync(SessionContext context, string tableName,
         DataSource dataSource, CancellationToken cancellationToken)
     {
-        var options = new PostgresTableOptions(
-            dataSource.Configuration.ConnectionString!,
-            tableName);
+        var options = DataSourceConnectionStrings.PostgreSqlOptions(dataSource.Configuration, tableName);
 
         context.RegisterPostgres(tableName, options);
         return Task.CompletedTask;

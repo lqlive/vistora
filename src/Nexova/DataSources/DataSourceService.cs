@@ -241,8 +241,35 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore, IQueryEx
             : $"{directory}/{uniqueName}";
     }
 
-    private static bool TryParseType(string type, out DataSourceType parsed) =>
-        Enum.TryParse(type.Trim(), ignoreCase: true, out parsed)
-        && Enum.IsDefined(parsed);
+    private static bool TryParseType(string type, out DataSourceType parsed)
+    {
+        switch (type.Trim().ToLowerInvariant())
+        {
+            case "file":
+            case "files":
+                parsed = DataSourceType.Files;
+                return true;
+            case "mysql":
+                parsed = DataSourceType.MySql;
+                return true;
+            case "postgres":
+            case "postgresql":
+                parsed = DataSourceType.PostgreSql;
+                return true;
+            case "sqlite":
+                parsed = DataSourceType.Sqlite;
+                return true;
+            case "clickhouse":
+                parsed = DataSourceType.ClickHouse;
+                return true;
+            case "mongo":
+            case "mongodb":
+                parsed = DataSourceType.MongoDb;
+                return true;
+        }
+
+        return Enum.TryParse(type.Trim(), ignoreCase: true, out parsed)
+            && Enum.IsDefined(parsed);
+    }
 
 }
