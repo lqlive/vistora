@@ -7,5 +7,19 @@ public interface IQueryExecutor
     Task<QueryResult> ExecuteAsync(
         string sql,
         IReadOnlyCollection<DataSource> dataSources,
+        int? maxRows = null,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TableInfo>> ListTablesAsync(
+        DataSource dataSource,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ColumnInfo>> ListColumnsAsync(
+        DataSource dataSource,
+        string table,
+        CancellationToken cancellationToken = default);
+
+    Task<ConnectionTestResult> TestConnectionAsync(
+        DataSource dataSource,
         CancellationToken cancellationToken = default);
 }

@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import { addFileToDataSource, getDataSource, uploadDataSourceFile } from './api';
-import { listEngineTables, queryEngine } from '../../lib/apiClient/engine';
+import { listEngineColumns, listEngineTables, queryEngine } from '../../lib/apiClient/engine';
 import type {
   DataSourceResponse,
   EngineColumnInfo,
@@ -61,6 +61,10 @@ const DatasourceDetail: React.FC = () => {
   const [activeTable, setActiveTable] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [expandedTables, setExpandedTables] = useState<Record<string, boolean>>({});
+  const [columnsByTable, setColumnsByTable] = useState<Record<string, EngineColumnInfo[]>>({});
+  const [columnsLoading, setColumnsLoading] = useState<Record<string, boolean>>({});
+  const [columnsError, setColumnsError] = useState<Record<string, string>>({});
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -134,6 +138,34 @@ const DatasourceDetail: React.FC = () => {
       cancelled = true;
     };
   }, [activeTable, datasource, refreshKey, tables]);
+
+  const toggleTableColumns = async (table: EngineTableInfo) => {
+    const key = table.name;
+    const willOpen = !expandedTables[key];
+    setExpandedTables((prev) => ({ ...prev, [key]: willOpen }));
+
+    if (!willOpen || !datasource || columnsByTable[key] || columnsLoading[key]) {
+      return;
+    }
+
+    setColumnsLoading((prev) => ({ ...prev, [key]: true }));
+    setColumnsError((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    try {
+      const fields = await listEngineColumns(datasource, table.name, table.schema);
+      setColumnsByTable((prev) => ({ ...prev, [key]: fields }));
+    } catch (loadError) {
+      setColumnsError((prev) => ({
+        ...prev,
+        [key]: loadError instanceof Error ? loadError.message : 'Failed to load columns',
+      }));
+    } finally {
+      setColumnsLoading((prev) => ({ ...prev, [key]: false }));
+    }
+  };
 
   const handleAddFiles = async (selected: File[]) => {
     if (!datasource || selected.length === 0) return;
@@ -230,19 +262,71 @@ const DatasourceDetail: React.FC = () => {
               <span>Tables</span>
             </button>
             {tablesOpen &&
-              visibleTables.map((table) => (
-                <button
-                  key={`${table.schema ?? ''}.${table.name}`}
-                  onClick={() => setActiveTable(table.name)}
-                  className={classNames(
-                    'w-full flex items-center gap-1.5 pl-11 pr-3 py-2 hover:bg-gray-50 text-left',
-                    table.name === activeTable ? 'bg-gray-100 text-gray-900' : 'text-gray-600'
-                  )}
-                >
-                  <TableCellsIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                  <span className="font-mono text-xs truncate">{table.name}</span>
-                </button>
-              ))}
+              visibleTables.map((table) => {
+                const key = table.name;
+                const isOpen = !!expandedTables[key];
+                const fields = columnsByTable[key];
+                return (
+                  <div key={`${table.schema ?? ''}.${table.name}`}>
+                    <div
+                      className={classNames(
+                        'w-full flex items-center pr-3 hover:bg-gray-50',
+                        table.name === activeTable ? 'bg-gray-100' : ''
+                      )}
+                    >
+                      <button
+                        onClick={() => toggleTableColumns(table)}
+                        className="flex items-center justify-center pl-8 pr-1 py-2 text-gray-400 shrink-0"
+                        title={isOpen ? 'Collapse' : 'Expand'}
+                      >
+                        {isOpen ? (
+                          <ChevronDownIcon className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronRightIcon className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setActiveTable(table.name)}
+                        className={classNames(
+                          'flex flex-1 items-center gap-1.5 py-2 pr-2 text-left min-w-0',
+                          table.name === activeTable ? 'text-gray-900' : 'text-gray-600'
+                        )}
+                      >
+                        <TableCellsIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                        <span className="font-mono text-xs truncate">{table.name}</span>
+                      </button>
+                    </div>
+                    {isOpen &&
+                      (columnsLoading[key] ? (
+                        <div className="py-1.5 pr-3 text-xs text-gray-400" style={{ paddingLeft: '4.25rem' }}>
+                          Loading fields...
+                        </div>
+                      ) : columnsError[key] ? (
+                        <div className="py-1.5 pr-3 text-xs text-red-600" style={{ paddingLeft: '4.25rem' }}>
+                          {columnsError[key]}
+                        </div>
+                      ) : fields && fields.length > 0 ? (
+                        fields.map((field) => (
+                          <div
+                            key={field.name}
+                            className="flex items-center gap-1.5 py-1.5 pr-3 text-gray-600"
+                            style={{ paddingLeft: '4.25rem' }}
+                          >
+                            <TypeBadge type={mapEngineColumnType(field)} />
+                            <span className="font-mono text-xs truncate">{field.name}</span>
+                            <span className="ml-auto font-mono text-[10px] text-gray-400 truncate" title={field.type}>
+                              {field.type}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-1.5 pr-3 text-xs text-gray-400" style={{ paddingLeft: '4.25rem' }}>
+                          No fields
+                        </div>
+                      ))}
+                  </div>
+                );
+              })}
 
             {/* Files */}
             <div className="flex items-center pr-2 hover:bg-gray-50">

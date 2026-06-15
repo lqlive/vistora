@@ -1,5 +1,6 @@
 ﻿using ErrorOr;
 using Microsoft.AspNetCore.Http;
+using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 using Nexova.Core.Storage;
 using Nexova.Core.Stores;
@@ -8,7 +9,7 @@ using Nexova.DataSources.Models;
 
 namespace Nexova.DataSources;
 
-public sealed class DataSourceService(IDataSourceStore dataSourceStore)
+public sealed class DataSourceService(IDataSourceStore dataSourceStore, IQueryExecutor queryExecutor)
 {
     public async Task<IEnumerable<DataSourceResponse>> ListAsync(CancellationToken cancellationToken = default)
     {
@@ -51,19 +52,7 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore)
 
         foreach (var asset in request.Files)
         {
-            dataSource.FileAssets.Add(new DataSourceFileAsset
-            {
-                Id = Guid.NewGuid(),
-                DataSourceId = dataSource.Id,
-                DataSource = dataSource,
-                FileName = asset.FileName,
-                StoragePath = asset.StoragePath,
-                ContentType = asset.ContentType,
-                Size = asset.Size,
-                HasHeader = asset.HasHeader,
-                Delimiter = asset.Delimiter,
-                Sheet = asset.Sheet
-            });
+            dataSource.FileAssets.Add(CreateFileAsset(dataSource, asset));
         }
 
         var created = await dataSourceStore.CreateAsync(dataSource, cancellationToken);
@@ -157,6 +146,90 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore)
             storagePath,
             storagePath);
     }
+
+    public async Task<ErrorOr<DataSourceResponse>> AddFileAsync(
+        Guid id,
+        DataSourceFileAssetRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.FileName) || string.IsNullOrWhiteSpace(request.StoragePath))
+        {
+            return DataSourceErrors.FileRequired;
+        }
+
+        var dataSource = await dataSourceStore.GetAsync(id, cancellationToken);
+        if (dataSource is null)
+        {
+            return DataSourceErrors.NotFound;
+        }
+
+        dataSource.FileAssets.Add(CreateFileAsset(dataSource, request));
+
+        var updated = await dataSourceStore.UpdateAsync(dataSource, cancellationToken);
+        if (!updated)
+        {
+            return DataSourceErrors.NameAlreadyExists;
+        }
+
+        return dataSource.ToResponse();
+    }
+
+    public async Task<ErrorOr<IReadOnlyList<TableInfo>>> ListTablesAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var dataSource = await dataSourceStore.GetAsync(id, cancellationToken);
+        if (dataSource is null)
+        {
+            return DataSourceErrors.NotFound;
+        }
+
+        var tables = await queryExecutor.ListTablesAsync(dataSource, cancellationToken);
+        return ErrorOrFactory.From(tables);
+    }
+
+    public async Task<ErrorOr<IReadOnlyList<ColumnInfo>>> ListColumnsAsync(
+        Guid id,
+        string table,
+        CancellationToken cancellationToken = default)
+    {
+        var dataSource = await dataSourceStore.GetAsync(id, cancellationToken);
+        if (dataSource is null)
+        {
+            return DataSourceErrors.NotFound;
+        }
+
+        var columns = await queryExecutor.ListColumnsAsync(dataSource, table, cancellationToken);
+        return ErrorOrFactory.From(columns);
+    }
+
+    public async Task<ErrorOr<ConnectionTestResult>> TestConnectionAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var dataSource = await dataSourceStore.GetAsync(id, cancellationToken);
+        if (dataSource is null)
+        {
+            return DataSourceErrors.NotFound;
+        }
+
+        return await queryExecutor.TestConnectionAsync(dataSource, cancellationToken);
+    }
+
+    private static DataSourceFileAsset CreateFileAsset(DataSource dataSource, DataSourceFileAssetRequest request) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            DataSourceId = dataSource.Id,
+            DataSource = dataSource,
+            FileName = request.FileName,
+            StoragePath = request.StoragePath,
+            ContentType = request.ContentType,
+            Size = request.Size,
+            HasHeader = request.HasHeader,
+            Delimiter = request.Delimiter,
+            Sheet = request.Sheet
+        };
 
     private static string BuildStoragePath(string? storageDirectory, string fileName)
     {

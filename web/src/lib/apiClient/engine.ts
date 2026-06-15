@@ -2,20 +2,18 @@ import { api } from './http';
 import type {
   DataSourceResponse,
   EngineColumnInfo,
-  EngineDataSourceConnection,
   EngineExplainResult,
   EngineQueryResult,
   EngineTableInfo,
 } from '../../types';
 
-// The query engine is hosted in-process by Nexova under /api/query (it is no longer a
-// separate service), so every engine call goes through the main API instance.
+// Schema introspection and connection testing are exposed under the data source
+// resource, while ad-hoc SQL execution lives under /api/query. Every call now
+// references data sources by id; the server resolves their connection details.
 export const listEngineTables = async (
   dataSource: DataSourceResponse
 ): Promise<EngineTableInfo[]> => {
-  const response = await api.post<EngineTableInfo[]>('/api/query/schema/tables', {
-    dataSource: toEngineDataSource(dataSource),
-  });
+  const response = await api.get<EngineTableInfo[]>(`/api/datasources/${dataSource.id}/tables`);
   return response.data;
 };
 
@@ -24,20 +22,17 @@ export const listEngineColumns = async (
   table: string,
   schema?: string | null
 ): Promise<EngineColumnInfo[]> => {
-  const response = await api.post<EngineColumnInfo[]>('/api/query/schema/columns', {
-    dataSource: toEngineDataSource(dataSource),
-    schema,
-    table,
-  });
+  const response = await api.get<EngineColumnInfo[]>(
+    `/api/datasources/${dataSource.id}/tables/${encodeURIComponent(table)}/columns`,
+    { params: schema ? { schema } : undefined }
+  );
   return response.data;
 };
 
 export const testEngineConnection = async (
   dataSource: DataSourceResponse
 ): Promise<void> => {
-  await api.post('/api/query/test-connection', {
-    dataSource: toEngineDataSource(dataSource),
-  });
+  await api.post(`/api/datasources/${dataSource.id}/test-connection`);
 };
 
 export const queryEngine = async (
@@ -46,7 +41,7 @@ export const queryEngine = async (
   limit = 1000
 ): Promise<EngineQueryResult> => {
   const response = await api.post<EngineQueryResult>('/api/query', {
-    dataSource: toEngineDataSource(dataSource),
+    dataSourceIds: [dataSource.id],
     sql,
     limit,
     timeoutMs: 30000,
@@ -60,7 +55,7 @@ export const explainEngine = async (
   limit = 1000
 ): Promise<EngineExplainResult> => {
   const response = await api.post<EngineExplainResult>('/api/query/explain', {
-    dataSource: toEngineDataSource(dataSource),
+    dataSourceId: dataSource.id,
     sql,
     limit,
     timeoutMs: 30000,
@@ -69,35 +64,15 @@ export const explainEngine = async (
 };
 
 export const federatedQueryEngine = async (
-  dataSources: EngineDataSourceConnection[],
+  dataSourceIds: string[],
   sql: string,
   limit = 1000
 ): Promise<EngineQueryResult> => {
-  const response = await api.post<EngineQueryResult>('/api/query/federated', {
-    dataSources,
+  const response = await api.post<EngineQueryResult>('/api/query', {
+    dataSourceIds,
     sql,
     limit,
     timeoutMs: 30000,
   });
   return response.data;
 };
-
-const toEngineDataSource = (dataSource: DataSourceResponse): EngineDataSourceConnection => {
-  const configuration = dataSource.configuration;
-  return compactObject({
-    type: dataSource.type,
-    connectionString: configuration.connectionString,
-    host: configuration.host,
-    port: configuration.port,
-    database: configuration.database,
-    username: configuration.username,
-    password: configuration.password,
-    schema: configuration.schema,
-    path: configuration.path,
-  });
-};
-
-const compactObject = <T extends Record<string, unknown>>(value: T): T =>
-  Object.fromEntries(
-    Object.entries(value).filter(([, fieldValue]) => fieldValue !== null && fieldValue !== undefined && fieldValue !== '')
-  ) as T;

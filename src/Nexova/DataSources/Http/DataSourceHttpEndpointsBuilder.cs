@@ -19,6 +19,12 @@ public static class DataSourceHttpEndpointsBuilder
             .WithValidation<DataSourceRequest>();
         api.MapDelete("/{id:guid}", Delete);
 
+        api.MapPost("/{id:guid}/files", AddFile);
+
+        api.MapGet("/{id:guid}/tables", ListTables);
+        api.MapGet("/{id:guid}/tables/{table}/columns", ListColumns);
+        api.MapPost("/{id:guid}/test-connection", TestConnection);
+
         return api;
     }
 
@@ -65,6 +71,18 @@ public static class DataSourceHttpEndpointsBuilder
             errors => errors.ToProblem());
     }
 
+    private static async Task<IResult> AddFile(
+        Guid id,
+        DataSourceFileAssetRequest request,
+        DataSourceService service,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.AddFileAsync(id, request, cancellationToken);
+        return result.Match<IResult>(
+            dataSource => Results.Ok(dataSource),
+            errors => errors.ToProblem());
+    }
+
     private static async Task<IResult> Update(
         Guid id,
         DataSourceRequest request,
@@ -85,6 +103,40 @@ public static class DataSourceHttpEndpointsBuilder
         var result = await service.DeleteAsync(id, cancellationToken);
         return result.Match(
             _ => Results.NoContent(),
+            errors => errors.ToProblem());
+    }
+
+    private static async Task<IResult> ListTables(
+        Guid id,
+        DataSourceService service,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.ListTablesAsync(id, cancellationToken);
+        return result.Match<IResult>(
+            tables => Results.Ok(tables),
+            errors => errors.ToProblem());
+    }
+
+    private static async Task<IResult> ListColumns(
+        Guid id,
+        string table,
+        DataSourceService service,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.ListColumnsAsync(id, table, cancellationToken);
+        return result.Match<IResult>(
+            columns => Results.Ok(columns),
+            errors => errors.ToProblem());
+    }
+
+    private static async Task<IResult> TestConnection(
+        Guid id,
+        DataSourceService service,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.TestConnectionAsync(id, cancellationToken);
+        return result.Match<IResult>(
+            outcome => Results.Ok(outcome),
             errors => errors.ToProblem());
     }
 }
