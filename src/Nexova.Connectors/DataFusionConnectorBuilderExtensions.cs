@@ -14,6 +14,7 @@ public static class DataFusionConnectorBuilderExtensions
         services.AddKeyedScoped<IConnector, FileConnector>(DataSourceType.Files);
         services.AddKeyedScoped<IConnector, MySqlConnector>(DataSourceType.MySql);
         services.AddKeyedScoped<IConnector, PostgreSqlConnector>(DataSourceType.PostgreSql);
+        services.AddKeyedScoped<IConnector, SqliteConnector>(DataSourceType.Sqlite);
         services.AddKeyedScoped<IConnector, ClickHouseConnector>(DataSourceType.ClickHouse);
         services.AddKeyedScoped<IConnector, MongoDbConnector>(DataSourceType.MongoDb);
 

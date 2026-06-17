@@ -1,4 +1,5 @@
 ﻿using Apache.DataFusion;
+using Apache.DataFusion.TableProviders.ClickHouse;
 using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 
@@ -11,9 +12,9 @@ public sealed class ClickHouseConnector : IConnector
     public Task RegisterAsync(SessionContext context, string tableName,
         DataSource dataSource, CancellationToken cancellationToken)
     {
-        var options = DataSourceConnectionStrings.ClickHouseOptions(dataSource.Configuration, tableName);
+        var options = DataSourceConnectionStrings.ClickHouseOptions(dataSource.Configuration, dataSource.Name);
 
-        context.RegisterClickHouse(tableName, options);
+        context.RegisterClickHouse(options);
         return Task.CompletedTask;
     }
 }

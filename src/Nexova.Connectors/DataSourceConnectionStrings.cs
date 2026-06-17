@@ -1,37 +1,75 @@
 using Apache.DataFusion;
+using Apache.DataFusion.TableProviders.ClickHouse;
+using Apache.DataFusion.TableProviders.MongoDB;
+using Apache.DataFusion.TableProviders.MySql;
+using Apache.DataFusion.TableProviders.PostgreSql;
+using Apache.DataFusion.TableProviders.Sqlite;
 using Nexova.Core.Entities;
 
 namespace Nexova.Connectors;
 
 internal static class DataSourceConnectionStrings
 {
-    public static PostgresTableOptions PostgreSqlOptions(DataSourceConfiguration configuration, string tableName) =>
-        new(PostgreSql(configuration), tableName)
+    public static PostgreSqlDatabaseOptions PostgreSqlOptions(DataSourceConfiguration configuration, string sourceName) =>
+        new()
         {
-            SchemaName = Optional(configuration.Schema)
+            ConnectionString = PostgreSql(configuration),
+            SourceName = sourceName,
+            Schemas = Optional(configuration.Schema) is { } schema ? [schema] : ["public"]
         };
 
-    public static MySqlTableOptions MySqlOptions(DataSourceConfiguration configuration, string tableName) =>
-        new(MySql(configuration), tableName)
+    public static MySqlDatabaseOptions MySqlOptions(DataSourceConfiguration configuration, string sourceName) =>
+        new()
         {
-            SchemaName = Optional(configuration.Schema)
+            ConnectionString = MySql(configuration),
+            SourceName = sourceName,
+            DatabaseName = Optional(configuration.Database)
         };
 
-    public static ClickHouseTableOptions ClickHouseOptions(DataSourceConfiguration configuration, string tableName) =>
-        new(ClickHouseUrl(configuration), tableName)
+    public static ClickHouseDatabaseOptions ClickHouseOptions(DataSourceConfiguration configuration, string sourceName) =>
+        new()
         {
-            Database = Optional(configuration.Database),
-            User = Optional(configuration.Username),
-            Password = configuration.Password
+            ConnectionString = ClickHouse(configuration),
+            SourceName = sourceName,
+            DatabaseName = Optional(configuration.Database)
+        };
+
+    public static MongoDbDatabaseOptions MongoDbOptions(DataSourceConfiguration configuration, string sourceName) =>
+        new()
+        {
+            ConnectionString = MongoDb(configuration),
+            SourceName = sourceName,
+            DatabaseName = Optional(configuration.Database)
+        };
+
+    public static SqliteDatabaseOptions SqliteOptions(DataSourceConfiguration configuration, string sourceName) =>
+        new()
+        {
+            ConnectionString = Sqlite(configuration),
+            SourceName = sourceName
         };
 
     public static string PostgreSql(DataSourceConfiguration configuration) =>
-        ExistingOrBuildDatabaseUri(configuration, "postgresql", 5432);
+        ExistingOrBuildDatabaseConnectionString(configuration, "Host", 5432);
 
     public static string MySql(DataSourceConfiguration configuration) =>
-        ExistingOrBuildDatabaseUri(configuration, "mysql", 3306);
+        ExistingOrBuildDatabaseConnectionString(configuration, "Server", 3306);
 
-    public static string ClickHouseUrl(DataSourceConfiguration configuration)
+    public static string MongoDb(DataSourceConfiguration configuration) =>
+        Required(configuration.ConnectionString, nameof(configuration.ConnectionString));
+
+    public static string Sqlite(DataSourceConfiguration configuration)
+    {
+        if (!string.IsNullOrWhiteSpace(configuration.ConnectionString))
+        {
+            return configuration.ConnectionString.Trim();
+        }
+
+        var path = Optional(configuration.Path) ?? Required(configuration.StoragePath, nameof(configuration.StoragePath));
+        return BuildConnectionString(("Data Source", path));
+    }
+
+    public static string ClickHouse(DataSourceConfiguration configuration)
     {
         if (!string.IsNullOrWhiteSpace(configuration.ConnectionString))
         {
@@ -40,14 +78,23 @@ internal static class DataSourceConnectionStrings
 
         var host = Required(configuration.Host, nameof(configuration.Host));
         var port = configuration.Port ?? 8123;
-        var scheme = configuration.Options?.GetValueOrDefault("scheme") ?? "http";
+        var database = Optional(configuration.Database);
+        var protocol = Optional(configuration.Options?.GetValueOrDefault("protocol"))
+            ?? Optional(configuration.Options?.GetValueOrDefault("scheme"))
+            ?? "https";
 
-        return $"{scheme}://{host}:{port}";
+        return BuildConnectionString(
+            ("Host", host),
+            ("Port", port),
+            ("Protocol", protocol),
+            ("Username", Optional(configuration.Username) ?? "default"),
+            ("Password", configuration.Password),
+            ("Database", database));
     }
 
-    private static string ExistingOrBuildDatabaseUri(
+    private static string ExistingOrBuildDatabaseConnectionString(
         DataSourceConfiguration configuration,
-        string scheme,
+        string hostKey,
         int defaultPort)
     {
         if (!string.IsNullOrWhiteSpace(configuration.ConnectionString))
@@ -58,25 +105,29 @@ internal static class DataSourceConnectionStrings
         var host = Required(configuration.Host, nameof(configuration.Host));
         var database = Required(configuration.Database, nameof(configuration.Database));
         var port = configuration.Port ?? defaultPort;
-        var credentials = BuildCredentials(configuration);
 
-        return $"{scheme}://{credentials}{host}:{port}/{Uri.EscapeDataString(database)}";
+        return BuildConnectionString(
+            (hostKey, host),
+            ("Port", port),
+            ("Database", database),
+            ("User ID", Optional(configuration.Username)),
+            ("Password", configuration.Password));
     }
 
-    private static string BuildCredentials(DataSourceConfiguration configuration)
+    private static string BuildConnectionString(params (string Key, object? Value)[] values)
     {
-        if (string.IsNullOrWhiteSpace(configuration.Username))
+        var builder = new System.Data.Common.DbConnectionStringBuilder();
+        foreach (var (key, value) in values)
         {
-            return string.Empty;
+            if (value is string { Length: 0 } or null)
+            {
+                continue;
+            }
+
+            builder[key] = value;
         }
 
-        var username = Uri.EscapeDataString(configuration.Username.Trim());
-        if (string.IsNullOrEmpty(configuration.Password))
-        {
-            return $"{username}@";
-        }
-
-        return $"{username}:{Uri.EscapeDataString(configuration.Password)}@";
+        return builder.ConnectionString;
     }
 
     private static string Required(string? value, string name)

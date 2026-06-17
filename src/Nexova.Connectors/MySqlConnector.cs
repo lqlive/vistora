@@ -1,4 +1,5 @@
 ﻿using Apache.DataFusion;
+using Apache.DataFusion.TableProviders.MySql;
 using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 
@@ -11,9 +12,9 @@ public sealed class MySqlConnector : IConnector
     public Task RegisterAsync(SessionContext context, string tableName,
         DataSource dataSource, CancellationToken cancellationToken)
     {
-        var options = DataSourceConnectionStrings.MySqlOptions(dataSource.Configuration, tableName);
+        var options = DataSourceConnectionStrings.MySqlOptions(dataSource.Configuration, dataSource.Name);
 
-        context.RegisterMySql(tableName, options);
+        context.RegisterMySql(options);
         return Task.CompletedTask;
     }
 }

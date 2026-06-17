@@ -1,4 +1,5 @@
 ﻿using Apache.DataFusion;
+using Apache.DataFusion.TableProviders.PostgreSql;
 using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 
@@ -11,9 +12,9 @@ public sealed class PostgreSqlConnector : IConnector
     public Task RegisterAsync(SessionContext context, string tableName,
         DataSource dataSource, CancellationToken cancellationToken)
     {
-        var options = DataSourceConnectionStrings.PostgreSqlOptions(dataSource.Configuration, tableName);
+        var options = DataSourceConnectionStrings.PostgreSqlOptions(dataSource.Configuration, dataSource.Name);
 
-        context.RegisterPostgres(tableName, options);
+        context.RegisterPostgreSql(options);
         return Task.CompletedTask;
     }
 }
