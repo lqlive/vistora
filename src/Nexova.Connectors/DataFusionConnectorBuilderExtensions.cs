@@ -18,6 +18,7 @@ public static class DataFusionConnectorBuilderExtensions
         services.AddKeyedScoped<IConnector, ClickHouseConnector>(DataSourceType.ClickHouse);
         services.AddKeyedScoped<IConnector, MongoDbConnector>(DataSourceType.MongoDb);
 
+        services.AddSingleton<RegisteredSessionProvider>();
         services.AddScoped<IQueryExecutor, DataFusionQueryExecutor>();
         return builder;
     }

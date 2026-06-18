@@ -120,10 +120,11 @@ public static class DataSourceHttpEndpointsBuilder
     private static async Task<IResult> ListColumns(
         Guid id,
         string table,
+        [FromQuery] string? schema,
         DataSourceService service,
         CancellationToken cancellationToken)
     {
-        var result = await service.ListColumnsAsync(id, table, cancellationToken);
+        var result = await service.ListColumnsAsync(id, table, schema, cancellationToken);
         return result.Match<IResult>(
             columns => Results.Ok(columns),
             errors => errors.ToProblem());

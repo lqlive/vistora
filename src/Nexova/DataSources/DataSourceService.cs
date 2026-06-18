@@ -191,6 +191,7 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore, IQueryEx
     public async Task<ErrorOr<IReadOnlyList<ColumnInfo>>> ListColumnsAsync(
         Guid id,
         string table,
+        string? schema = null,
         CancellationToken cancellationToken = default)
     {
         var dataSource = await dataSourceStore.GetAsync(id, cancellationToken);
@@ -199,7 +200,7 @@ public sealed class DataSourceService(IDataSourceStore dataSourceStore, IQueryEx
             return DataSourceErrors.NotFound;
         }
 
-        var columns = await queryExecutor.ListColumnsAsync(dataSource, table, cancellationToken);
+        var columns = await queryExecutor.ListColumnsAsync(dataSource, table, schema, cancellationToken);
         return ErrorOrFactory.From(columns);
     }
 

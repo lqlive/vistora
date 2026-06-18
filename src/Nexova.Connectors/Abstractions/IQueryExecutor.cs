@@ -17,6 +17,7 @@ public interface IQueryExecutor
     Task<IReadOnlyList<ColumnInfo>> ListColumnsAsync(
         DataSource dataSource,
         string table,
+        string? schema = null,
         CancellationToken cancellationToken = default);
 
     Task<ConnectionTestResult> TestConnectionAsync(

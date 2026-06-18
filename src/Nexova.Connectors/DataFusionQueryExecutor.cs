@@ -5,11 +5,10 @@ using Apache.Arrow.Types;
 using Apache.DataFusion;
 using Nexova.Core.Entities;
 using Nexova.Connectors.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Nexova.Connectors;
 
-public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : IQueryExecutor
+public sealed class DataFusionQueryExecutor(RegisteredSessionProvider sessionProvider) : IQueryExecutor
 {
     private const string ListTablesSql =
         """
@@ -21,7 +20,7 @@ public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : 
 
     private const string FirstTableSql =
         """
-        SELECT table_name
+        SELECT table_schema, table_name
         FROM information_schema.tables
         WHERE table_schema <> 'information_schema'
         LIMIT 1
@@ -33,8 +32,7 @@ public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : 
         int? maxRows = null,
         CancellationToken cancellationToken = default)
     {
-        using var context = new SessionContext();
-        await RegisterSourcesAsync(context, dataSources, cancellationToken);
+        var context = await sessionProvider.GetAsync(dataSources, cancellationToken);
 
         using var dataFrame = context.Sql(sql);
         return await ReadResultAsync(dataFrame, maxRows, cancellationToken);
@@ -44,8 +42,7 @@ public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : 
         DataSource dataSource,
         CancellationToken cancellationToken = default)
     {
-        using var context = SessionContext.CreateBuilder().InformationSchema(true).Build();
-        await RegisterSourcesAsync(context, [dataSource], cancellationToken);
+        var context = await sessionProvider.GetAsync([dataSource], cancellationToken);
 
         using var dataFrame = context.Sql(ListTablesSql);
         var result = await ReadResultAsync(dataFrame, null, cancellationToken);
@@ -61,12 +58,12 @@ public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : 
     public async Task<IReadOnlyList<ColumnInfo>> ListColumnsAsync(
         DataSource dataSource,
         string table,
+        string? schema = null,
         CancellationToken cancellationToken = default)
     {
-        using var context = new SessionContext();
-        await RegisterSourcesAsync(context, [dataSource], cancellationToken);
+        var context = await sessionProvider.GetAsync([dataSource], cancellationToken);
 
-        using var dataFrame = context.Sql($"SELECT * FROM {QuoteIdentifier(table)} LIMIT 0");
+        using var dataFrame = context.Sql($"SELECT * FROM {QuoteTableReference(schema, table)} LIMIT 0");
         return MapColumns(dataFrame.Schema());
     }
 
@@ -77,15 +74,14 @@ public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : 
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            using var context = SessionContext.CreateBuilder().InformationSchema(true).Build();
-            await RegisterSourcesAsync(context, [dataSource], cancellationToken);
+            var context = await sessionProvider.GetAsync([dataSource], cancellationToken);
 
             using var tablesFrame = context.Sql(FirstTableSql);
             var tables = await ReadResultAsync(tablesFrame, 1, cancellationToken);
 
-            if (tables.Rows.Count > 0 && tables.Rows[0][0] is string name)
+            if (tables.Rows.Count > 0 && tables.Rows[0][0] is string schema && tables.Rows[0][1] is string name)
             {
-                using var probe = context.Sql($"SELECT * FROM {QuoteIdentifier(name)} LIMIT 1");
+                using var probe = context.Sql($"SELECT * FROM {QuoteTableReference(schema, name)} LIMIT 1");
                 using var reader = probe.ExecuteStream(cancellationToken);
                 _ = await reader.ReadNextRecordBatchAsync(cancellationToken);
             }
@@ -101,18 +97,6 @@ public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : 
         {
             stopwatch.Stop();
             return new ConnectionTestResult(false, exception.Message, stopwatch.ElapsedMilliseconds);
-        }
-    }
-
-    private async Task RegisterSourcesAsync(
-        SessionContext context,
-        IReadOnlyCollection<DataSource> dataSources,
-        CancellationToken cancellationToken)
-    {
-        foreach (var dataSource in dataSources)
-        {
-            var connector = serviceProvider.GetRequiredKeyedService<IConnector>(dataSource.Type);
-            await connector.RegisterAsync(context, dataSource.Name, dataSource, cancellationToken);
         }
     }
 
@@ -151,6 +135,11 @@ public sealed class DataFusionQueryExecutor(IServiceProvider serviceProvider) : 
         const string quote = "\"";
         return quote + identifier.Replace(quote, quote + quote) + quote;
     }
+
+    private static string QuoteTableReference(string? schema, string table) =>
+        string.IsNullOrWhiteSpace(schema)
+            ? QuoteIdentifier(table)
+            : $"{QuoteIdentifier(schema)}.{QuoteIdentifier(table)}";
 
     private static IReadOnlyList<ColumnInfo> MapColumns(Schema schema) =>
         schema.FieldsList.Select(MapColumn).ToList();
