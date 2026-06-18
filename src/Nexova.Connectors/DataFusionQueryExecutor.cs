@@ -107,7 +107,7 @@ public sealed class DataFusionQueryExecutor(RegisteredSessionProvider sessionPro
     {
         var columns = MapColumns(dataFrame.Schema());
 
-        var rows = new List<IReadOnlyList<object?>>();
+        var rows = new List<IReadOnlyList<object?>>(maxRows.GetValueOrDefault());
         using var reader = dataFrame.ExecuteStream(cancellationToken);
 
         while (await reader.ReadNextRecordBatchAsync(cancellationToken) is { } batch)
@@ -115,14 +115,19 @@ public sealed class DataFusionQueryExecutor(RegisteredSessionProvider sessionPro
             using (batch)
             {
                 var columnArrays = batch.Arrays.ToArray();
-                for (var rowIndex = 0; rowIndex < batch.Length; rowIndex++)
-                {
-                    if (maxRows is { } limit && rows.Count >= limit)
-                    {
-                        return new QueryResult { Columns = columns, Rows = rows };
-                    }
+                var valueReaders = columnArrays.Select(CreateValueReader).ToArray();
+                var rowCount = maxRows is { } limit
+                    ? Math.Min(batch.Length, limit - rows.Count)
+                    : batch.Length;
 
-                    rows.Add(ReadRow(columnArrays, rowIndex));
+                for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+                {
+                    rows.Add(ReadRow(valueReaders, rowIndex));
+                }
+
+                if (maxRows is { } rowLimit && rows.Count >= rowLimit)
+                {
+                    return new QueryResult { Columns = columns, Rows = rows };
                 }
             }
         }
@@ -156,50 +161,49 @@ public sealed class DataFusionQueryExecutor(RegisteredSessionProvider sessionPro
         return new ColumnInfo(field.Name, field.DataType.Name, field.IsNullable, precision, scale);
     }
 
-    private static object?[] ReadRow(IReadOnlyList<IArrowArray> columnArrays, int rowIndex)
+    private static object?[] ReadRow(IReadOnlyList<Func<int, object?>> valueReaders, int rowIndex)
     {
-        var row = new object?[columnArrays.Count];
+        var row = new object?[valueReaders.Count];
         for (var columnIndex = 0; columnIndex < row.Length; columnIndex++)
         {
-            row[columnIndex] = ReadValue(columnArrays[columnIndex], rowIndex);
+            row[columnIndex] = valueReaders[columnIndex](rowIndex);
         }
 
         return row;
     }
 
-    private static object? ReadValue(IArrowArray array, int index)
-    {
-        if (array.IsNull(index))
+    private static Func<int, object?> CreateValueReader(IArrowArray array) =>
+        array switch
         {
-            return null;
-        }
-
-        return array switch
-        {
-            BooleanArray value => value.GetValue(index),
-            Int8Array value => value.GetValue(index),
-            Int16Array value => value.GetValue(index),
-            Int32Array value => value.GetValue(index),
-            Int64Array value => value.GetValue(index),
-            UInt8Array value => value.GetValue(index),
-            UInt16Array value => value.GetValue(index),
-            UInt32Array value => value.GetValue(index),
-            UInt64Array value => value.GetValue(index),
-            HalfFloatArray value => value.GetValue(index) is { } half ? (double)half : null,
-            FloatArray value => value.GetValue(index),
-            DoubleArray value => value.GetValue(index),
-            Decimal128Array value => value.GetValue(index),
-            Decimal256Array value => value.GetString(index),
-            Date32Array value => value.GetDateTimeOffset(index),
-            Date64Array value => value.GetDateTimeOffset(index),
-            TimestampArray value => value.GetTimestamp(index),
-            Time32Array value => value.GetValue(index),
-            Time64Array value => value.GetValue(index),
-            StringArray value => value.GetString(index, Encoding.UTF8),
-            LargeStringArray value => value.GetString(index, Encoding.UTF8),
-            BinaryArray value => value.GetBytes(index).ToArray(),
-            LargeBinaryArray value => value.GetBytes(index).ToArray(),
-            _ => null
+            BooleanArray value => index => ReadValue(value, index, value.GetValue),
+            Int8Array value => index => ReadValue(value, index, value.GetValue),
+            Int16Array value => index => ReadValue(value, index, value.GetValue),
+            Int32Array value => index => ReadValue(value, index, value.GetValue),
+            Int64Array value => index => ReadValue(value, index, value.GetValue),
+            UInt8Array value => index => ReadValue(value, index, value.GetValue),
+            UInt16Array value => index => ReadValue(value, index, value.GetValue),
+            UInt32Array value => index => ReadValue(value, index, value.GetValue),
+            UInt64Array value => index => ReadValue(value, index, value.GetValue),
+            HalfFloatArray value => index => value.IsNull(index) || value.GetValue(index) is not { } half ? null : (double)half,
+            FloatArray value => index => ReadValue(value, index, value.GetValue),
+            DoubleArray value => index => ReadValue(value, index, value.GetValue),
+            Decimal128Array value => index => ReadValue(value, index, value.GetValue),
+            Decimal256Array value => index => ReadValue(value, index, value.GetString),
+            Date32Array value => index => ReadValue(value, index, value.GetDateTimeOffset),
+            Date64Array value => index => ReadValue(value, index, value.GetDateTimeOffset),
+            TimestampArray value => index => ReadValue(value, index, value.GetTimestamp),
+            Time32Array value => index => ReadValue(value, index, value.GetValue),
+            Time64Array value => index => ReadValue(value, index, value.GetValue),
+            StringArray value => index => value.IsNull(index) ? null : value.GetString(index, Encoding.UTF8),
+            LargeStringArray value => index => value.IsNull(index) ? null : value.GetString(index, Encoding.UTF8),
+            BinaryArray value => index => value.IsNull(index) ? null : value.GetBytes(index).ToArray(),
+            LargeBinaryArray value => index => value.IsNull(index) ? null : value.GetBytes(index).ToArray(),
+            _ => _ => null
         };
-    }
+
+    private static object? ReadValue<TValue>(
+        IArrowArray array,
+        int index,
+        Func<int, TValue> read) =>
+        array.IsNull(index) ? null : read(index);
 }

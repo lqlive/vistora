@@ -1,16 +1,13 @@
 ﻿namespace Nexova.Core.Entities;
 
-public class User
+public class QueryDocument
 {
     public Guid Id { get; set; }
-
+    public Guid UserId { get; set; }
     public required string Name { get; set; }
-
-    public string? Email { get; set; }
-
-    public string? AvatarUrl { get; set; }
-    public ICollection<QueryDocument> QueryDocuments { get; set; } = [];
+    public required string Sql { get; set; }
+    public bool IsShared { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public User User { get; set; } = null!;
 }

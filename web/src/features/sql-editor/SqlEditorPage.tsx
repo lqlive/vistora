@@ -23,7 +23,7 @@ import {
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import { getDataSource, listDataSources } from '../datasources/api';
-import { listEngineTables, queryEngine } from '../../lib/apiClient/engine';
+import { federatedQueryEngine, listEngineTables } from '../../lib/apiClient/engine';
 import type {
   DataSourceResponse,
   EngineColumnInfo,
@@ -243,7 +243,8 @@ const SqlEditor: React.FC = () => {
       setRunning(true);
       setError(null);
       setMessage('Running query...');
-      const queryResult = await queryEngine(datasource, sql, 10000);
+      const dataSourceIds = sourceTables.map((group) => group.dataSource.id);
+      const queryResult = await federatedQueryEngine(dataSourceIds, sql, 10000);
       setResult(queryResult);
       setResultTab('results');
       setMessage(
@@ -257,7 +258,7 @@ const SqlEditor: React.FC = () => {
     } finally {
       setRunning(false);
     }
-  }, [datasource, sql]);
+  }, [datasource, sourceTables, sql]);
 
   const handleTableSelect = (selection: TableSelection) => {
     setDatasource(selection.dataSource);
