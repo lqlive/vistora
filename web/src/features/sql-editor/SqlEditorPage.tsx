@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   ChevronRightIcon,
@@ -22,12 +22,10 @@ import {
   Square3Stack3DIcon,
   PencilSquareIcon,
   TrashIcon,
-  EllipsisHorizontalIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import ConfirmDialog from '../../shared/components/ConfirmDialog';
 import TextInputDialog from '../../shared/components/TextInputDialog';
-import { useClickOutside } from '../../shared/hooks/useClickOutside';
 import { getDataSource, listDataSources } from '../datasources/api';
 import { federatedQueryEngine, listEngineTables } from '../../lib/apiClient/engine';
 import { createQueryDocument, deleteQueryDocument, listQueryDocuments, updateQueryDocument } from './api';
@@ -108,43 +106,34 @@ const TreeItem: React.FC<{
   onQueryDelete?: (queryDocument: QueryDocumentResponse) => void;
 }> = ({ node, depth, onTableSelect, onQuerySelect, onQueryRename, onQueryDelete }) => {
   const [open, setOpen] = useState(!!node.defaultOpen);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const hasChildren = !!node.children?.length;
   const canEditQuery = node.queryDocument?.isOwner;
 
-  useClickOutside(menuRef, () => setMenuOpen(false));
-
-  const handleSelect = () => {
-    if (node.selection) {
-      onTableSelect?.(node.selection);
-      return;
-    }
-
-    if (node.queryDocument) {
-      onQuerySelect?.(node.queryDocument);
-      return;
-    }
-
-    if (hasChildren) {
-      setOpen((o) => !o);
-    }
-  };
-
   return (
-    <div className="relative" ref={menuRef}>
-      <div
+    <div>
+      <button
+        onClick={() => {
+          if (node.selection) {
+            onTableSelect?.(node.selection);
+            return;
+          }
+
+          if (node.queryDocument) {
+            onQuerySelect?.(node.queryDocument);
+            return;
+          }
+
+          if (hasChildren) {
+            setOpen((o) => !o);
+          }
+        }}
         className={classNames(
           'group w-full flex items-center gap-1.5 py-2 pr-2 text-left hover:bg-gray-50 text-[13px]',
           node.active ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-700'
         )}
         style={{ paddingLeft: depth * 14 + 8 }}
       >
-        <button
-          type="button"
-          onClick={handleSelect}
-          className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-        >
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasChildren ? (
             open ? (
               <ChevronDownIcon className="h-3 w-3 text-gray-400 shrink-0" />
@@ -156,52 +145,50 @@ const TreeItem: React.FC<{
           )}
           {nodeIcon(node.icon)}
           <span className="truncate font-mono">{node.label}</span>
-        </button>
+        </span>
         {canEditQuery && (
-          <div className="ml-auto pr-1">
-            <button
-              type="button"
-              title="Query actions"
+          <span className="ml-auto hidden items-center gap-1 pr-1 group-hover:flex">
+            <span
+              role="button"
+              tabIndex={0}
+              title="Rename query"
               onClick={(event) => {
                 event.stopPropagation();
-                setMenuOpen((value) => !value);
+                onQueryRename?.(node.queryDocument!);
               }}
-              className={classNames(
-                'hidden rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 group-hover:block',
-                menuOpen && 'block'
-              )}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onQueryRename?.(node.queryDocument!);
+                }
+              }}
+              className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             >
-              <EllipsisHorizontalIcon className="h-4 w-4" />
-            </button>
-          </div>
+              <PencilSquareIcon className="h-3.5 w-3.5" />
+            </span>
+            <span
+              role="button"
+              tabIndex={0}
+              title="Delete query"
+              onClick={(event) => {
+                event.stopPropagation();
+                onQueryDelete?.(node.queryDocument!);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onQueryDelete?.(node.queryDocument!);
+                }
+              }}
+              className="rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+            >
+              <TrashIcon className="h-3.5 w-3.5" />
+            </span>
+          </span>
         )}
-      </div>
-      {canEditQuery && menuOpen && (
-        <div className="absolute right-2 top-7 z-30 w-36 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false);
-              onQueryRename?.(node.queryDocument!);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
-          >
-            <PencilSquareIcon className="h-4 w-4 text-gray-400" />
-            Rename
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false);
-              onQueryDelete?.(node.queryDocument!);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
-          >
-            <TrashIcon className="h-4 w-4 text-red-400" />
-            Delete
-          </button>
-        </div>
-      )}
+      </button>
       {open &&
         node.children?.map((c) => (
           <TreeItem
@@ -245,7 +232,6 @@ const TypeBadge: React.FC<{ type: GridColumnType }> = ({ type }) => {
 // ---------------------------------------------------------------------------
 const SqlEditor: React.FC = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [datasource, setDatasource] = useState<DataSourceResponse | null>(null);
   const [sourceTables, setSourceTables] = useState<DataSourceTables[]>([]);
   const [queryDocuments, setQueryDocuments] = useState<QueryDocumentResponse[]>([]);
@@ -406,6 +392,32 @@ const SqlEditor: React.FC = () => {
       setResultTab('messages');
     }
   }, [activeQueryDocument, queryDocuments, sql]);
+
+  const handleNewQueryDocument = useCallback(async () => {
+    try {
+      setError(null);
+      setMessage('Creating query...');
+      const initialSql = sql.trim() || (activeTable ? `select * from ${tableReference(activeTable)}` : 'select 1');
+      const created = await createQueryDocument({
+        name: nextQueryName(queryDocuments),
+        sql: initialSql,
+        isShared: false,
+      });
+
+      setQueryDocuments((current) => [...current, created]);
+      setActiveQueryDocument(created);
+      setActiveTable(null);
+      setSql(created.sql);
+      setResult(null);
+      setMessage('Query created.');
+      setResultTab('messages');
+    } catch (createError) {
+      const nextError = createError instanceof Error ? createError.message : 'Failed to create query';
+      setError(nextError);
+      setMessage(nextError);
+      setResultTab('messages');
+    }
+  }, [activeTable, queryDocuments, sql]);
 
   const handleRenameQueryDocument = useCallback((queryDocument: QueryDocumentResponse) => {
     setRenamingDocument(queryDocument);
@@ -600,9 +612,9 @@ const SqlEditor: React.FC = () => {
           <div className="flex items-center gap-2 text-gray-400">
             <button
               type="button"
-              onClick={() => navigate('/datasources?create=1')}
+              onClick={handleNewQueryDocument}
               className="hover:text-gray-700"
-              title="Add datasource"
+              title="New query"
             >
               <PlusIcon className="h-4 w-4" />
             </button>

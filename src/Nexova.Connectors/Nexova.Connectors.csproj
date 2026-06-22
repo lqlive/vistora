@@ -7,13 +7,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Apache.DataFusion" Version="0.2.0" />
-      <PackageReference Include="Apache.DataFusion.Native.win-x64" Version="0.2.0" />
-      <PackageReference Include="Apache.DataFusion.TableProviders.ClickHouse" Version="0.2.0" />
-      <PackageReference Include="Apache.DataFusion.TableProviders.MongoDB" Version="0.2.0" />
-      <PackageReference Include="Apache.DataFusion.TableProviders.MySql" Version="0.2.0" />
-      <PackageReference Include="Apache.DataFusion.TableProviders.PostgreSql" Version="0.2.0" />
-      <PackageReference Include="Apache.DataFusion.TableProviders.Sqlite" Version="0.2.0" />
+      <PackageReference Include="Apache.DataFusion" Version="0.2.1" />
+      <PackageReference Include="Apache.DataFusion.Native.win-x64" Version="0.2.1" />
+      <PackageReference Include="Apache.DataFusion.TableProviders.ClickHouse" Version="0.2.1" />
+      <PackageReference Include="Apache.DataFusion.TableProviders.MongoDB" Version="0.2.1" />
+      <PackageReference Include="Apache.DataFusion.TableProviders.MySql" Version="0.2.1" />
+      <PackageReference Include="Apache.DataFusion.TableProviders.PostgreSql" Version="0.2.1" />
+      <PackageReference Include="Apache.DataFusion.TableProviders.Sqlite" Version="0.2.1" />
     </ItemGroup>
 
     <ItemGroup>

@@ -18,32 +18,37 @@ public sealed class FileConnector(IStorageService storageService) : IConnector
             var uri = await storageService.GetDownloadUriAsync(asset.StoragePath, cancellationToken);
             var path = uri.IsFile ? uri.LocalPath : uri.ToString();
 
-            Register(context, ResolveTableName(asset), path, asset);
+            Register(context, tableName, ResolveTableName(asset), path, asset);
         }
     }
 
-    private static void Register(SessionContext context, string tableName, string path, DataSourceFileAsset asset)
+    private static void Register(
+        SessionContext context,
+        string schemaName,
+        string tableName,
+        string path,
+        DataSourceFileAsset asset)
     {
         switch (ResolveFormat(asset))
         {
             case FileFormat.Csv:
-                context.RegisterCsv(tableName, path, new CsvReadOptions
+                context.RegisterCsv(schemaName, tableName, path, new CsvReadOptions
                 {
                     HasHeader = asset.HasHeader ?? true,
                     Delimiter = ResolveDelimiter(asset)
                 });
                 break;
             case FileFormat.Parquet:
-                context.RegisterParquet(tableName, path);
+                context.RegisterParquet(schemaName, tableName, path);
                 break;
             case FileFormat.Json:
-                context.RegisterJson(tableName, path);
+                context.RegisterJson(schemaName, tableName, path);
                 break;
             case FileFormat.Arrow:
-                context.RegisterArrow(tableName, path);
+                context.RegisterArrow(schemaName, tableName, path);
                 break;
             case FileFormat.Avro:
-                context.RegisterAvro(tableName, path);
+                context.RegisterAvro(schemaName, tableName, path);
                 break;
             default:
                 throw new NotSupportedException(

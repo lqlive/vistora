@@ -1,4 +1,4 @@
-﻿using Nexova.Core.Configuration;
+using Nexova.Core.Configuration;
 using Nexova.Core.Management;
 using Nexova.Core.Stores;
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,4 @@
-﻿using Nexova.Core.Configuration;
+using Nexova.Core.Configuration;
 using Nexova.Core.Configuration.Validators;
 using Nexova.Core.Entities;
 using Nexova.Core.Storage;

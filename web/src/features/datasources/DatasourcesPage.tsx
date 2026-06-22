@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   PlusIcon,
   PencilSquareIcon,
@@ -81,7 +81,6 @@ const defaultCreateForm: CreateDataSourceForm = {
 };
 
 const Datasources: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [datasources, setDatasources] = useState<DataSourceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,24 +126,13 @@ const Datasources: React.FC = () => {
     setCreateForm((current) => ({ ...current, [key]: value }));
   };
 
-  const openCreateDialog = useCallback(() => {
+  const openCreateDialog = () => {
     setCreateError(null);
     setCreateForm(defaultCreateForm);
     setUploads([]);
     setUploadDir(`data-sources/${crypto.randomUUID()}`);
     setCreateOpen(true);
-  }, []);
-
-  useEffect(() => {
-    if (searchParams.get('create') !== '1') return;
-
-    openCreateDialog();
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete('create');
-      return next;
-    }, { replace: true });
-  }, [openCreateDialog, searchParams, setSearchParams]);
+  };
 
   const closeCreateDialog = () => {
     if (saving) return;

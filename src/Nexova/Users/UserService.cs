@@ -1,4 +1,4 @@
-﻿using Nexova.Core.Entities;
+using Nexova.Core.Entities;
 using Nexova.Core.Stores;
 using Nexova.Users.Models;
 
