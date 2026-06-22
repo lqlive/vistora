@@ -7,6 +7,7 @@ public class DataSource
     public DataSourceType Type { get; set; }
     public DataSourceConfiguration Configuration { get; set; } = new();
     public ICollection<DataSourceFileAsset> FileAssets { get; set; } = [];
+    public ICollection<WorkspaceConnection> WorkspaceConnections { get; set; } = [];
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

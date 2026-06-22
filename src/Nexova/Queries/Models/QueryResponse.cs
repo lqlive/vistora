@@ -1,6 +1,6 @@
 using Nexova.Connectors.Abstractions;
 
-namespace Nexova.Query.Models;
+namespace Nexova.Queries.Models;
 
 public sealed record QueryResponse(
     IReadOnlyList<ColumnInfo> Columns,

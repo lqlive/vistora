@@ -4,8 +4,8 @@ using Nexova.Core.Management;
 using Nexova.Database.PostgreSql;
 using Nexova.DataSources;
 using Nexova.DataSources.Http;
-using Nexova.Query;
-using Nexova.Query.Http;
+using Nexova.Queries;
+using Nexova.Queries.Http;
 using Nexova.Storage.Aws;
 
 var builder = WebApplication.CreateBuilder(args);

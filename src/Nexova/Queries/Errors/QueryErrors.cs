@@ -1,6 +1,6 @@
 using ErrorOr;
 
-namespace Nexova.Query.Errors;
+namespace Nexova.Queries.Errors;
 
 public static class QueryErrors
 {

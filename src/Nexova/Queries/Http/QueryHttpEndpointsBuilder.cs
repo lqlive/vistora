@@ -1,7 +1,7 @@
 using Nexova.Extensions;
-using Nexova.Query.Models;
+using Nexova.Queries.Models;
 
-namespace Nexova.Query.Http;
+namespace Nexova.Queries.Http;
 
 public static class QueryHttpEndpointsBuilder
 {

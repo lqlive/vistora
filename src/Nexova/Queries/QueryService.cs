@@ -4,10 +4,10 @@ using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 using Nexova.Core.Stores;
 using Nexova.DataSources.Errors;
-using Nexova.Query.Errors;
-using Nexova.Query.Models;
+using Nexova.Queries.Errors;
+using Nexova.Queries.Models;
 
-namespace Nexova.Query;
+namespace Nexova.Queries;
 
 public sealed class QueryService(IDataSourceStore dataSourceStore, IQueryExecutor queryExecutor)
 {

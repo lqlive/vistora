@@ -1,4 +1,4 @@
-namespace Nexova.Query.Models;
+namespace Nexova.Queries.Models;
 
 public sealed record QueryRequest(
     IReadOnlyList<Guid> DataSourceIds,
