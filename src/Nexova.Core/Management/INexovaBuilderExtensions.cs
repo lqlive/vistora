@@ -16,6 +16,8 @@ public static class INexovaBuilderExtensions
         var services = builder.Services;
         services.AddKeyedScoped<IDataSourceStore, InMemoryDataSourceStore>(InMemoryStoreOptions.Name);
         services.AddKeyedScoped<IDatasetStore, InMemoryDatasetStore>(InMemoryStoreOptions.Name);
+        services.AddKeyedScoped<IUserStore, InMemoryUserStore>(InMemoryStoreOptions.Name);
+        services.AddKeyedScoped<IQueryDocumentStore, InMemoryQueryDocumentStore>(InMemoryStoreOptions.Name);
 
         return builder;
     }

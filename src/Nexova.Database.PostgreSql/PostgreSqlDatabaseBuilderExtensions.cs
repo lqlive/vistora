@@ -1,5 +1,6 @@
 ﻿using Nexova.Core.Configuration;
 using Nexova.Core.Management;
+using Nexova.Core.Stores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -21,6 +22,9 @@ public static class PostgreSqlDatabaseBuilderExtensions
                 var databaseOptions = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
                 options.UseNpgsql(databaseOptions.ConnectionString);
             });
+
+        builder.Services.AddKeyedScoped<IUserStore, PostgreSqlUserStore>(Name);
+        builder.Services.AddKeyedScoped<IQueryDocumentStore, PostgreSqlQueryDocumentStore>(Name);
 
         return builder;
     }

@@ -202,3 +202,29 @@ export interface EngineExplainResult {
   plans: EngineExplainPlanInfo[];
   durationMs: number;
 }
+
+export interface UserResponse {
+  id: string;
+  name: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QueryDocumentResponse {
+  id: string;
+  userId: string;
+  name: string;
+  sql: string;
+  isShared: boolean;
+  isOwner: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QueryDocumentRequest {
+  name: string;
+  sql: string;
+  isShared: boolean;
+}

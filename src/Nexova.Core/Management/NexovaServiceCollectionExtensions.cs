@@ -18,6 +18,8 @@ public static class NexovaServiceCollectionExtensions
 
         services.AddProviderResolver<IDataSourceStore, DatabaseOptions>(options => options.Type);
         services.AddProviderResolver<IDatasetStore, DatabaseOptions>(options => options.Type);
+        services.AddProviderResolver<IUserStore, DatabaseOptions>(options => options.Type);
+        services.AddProviderResolver<IQueryDocumentStore, DatabaseOptions>(options => options.Type);
         services.AddProviderResolver<IContext, DatabaseOptions>(options => options.Type);
         services.AddProviderResolver<IStorageService, StorageOptions>(options => options.Type);
 

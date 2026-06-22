@@ -9,9 +9,11 @@ import {
   ChevronDownIcon,
   Bars3Icon,
   MagnifyingGlassIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useAuth } from '../../features/auth/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -51,11 +53,32 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const { user, loading, logout } = useAuth();
 
   const isActive = (href: string) =>
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
 
   useClickOutside(userMenuRef, () => setUserMenuOpen(false));
+
+  const initials = user
+    ? user.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? '')
+        .join('') || 'U'
+    : 'U';
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    await logout();
+  };
+
+  if (!loading && !user) {
+    return null;
+  }
+
+  const currentUser = user;
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -142,31 +165,52 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            {/* User menu */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setUserMenuOpen((o) => !o)}
-                className="flex items-center gap-2 group"
-              >
-                <div className="h-8 w-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-semibold">
-                  U
-                </div>
-                <ChevronDownIcon
-                  className={classNames(
-                    'h-3 w-3 text-gray-400 transition-transform',
-                    userMenuOpen && 'rotate-180'
+            {loading ? (
+              <div className="h-8 w-8 rounded-full bg-gray-100 animate-pulse" />
+            ) : (
+              /* User menu */
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen((o) => !o)}
+                  className="flex items-center gap-2 group"
+                >
+                  {currentUser?.avatarUrl ? (
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt={currentUser.name}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-semibold">
+                      {initials}
+                    </div>
                   )}
-                />
-              </button>
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-50">
-                  <div className="px-4 py-3">
-                    <div className="text-sm font-medium text-gray-900 truncate">Guest</div>
-                    <div className="text-xs text-gray-400 truncate">Not signed in</div>
+                  <ChevronDownIcon
+                    className={classNames(
+                      'h-3 w-3 text-gray-400 transition-transform',
+                      userMenuOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-50">
+                    <div className="px-4 py-3 border-b border-gray-50">
+                      <div className="text-sm font-medium text-gray-900 truncate">{currentUser?.name}</div>
+                      <div className="text-xs text-gray-400 truncate">
+                        {currentUser?.email ?? 'Signed in with GitHub'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <ArrowRightOnRectangleIcon className="h-4 w-4 text-gray-400" />
+                      Sign out
+                    </button>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </header>
 

@@ -6,21 +6,29 @@ import { chartsRoutes } from './features/charts/routes';
 import { datasetsRoutes } from './features/datasets/routes';
 import { datasourceRoutes } from './features/datasources/routes';
 import { sqlEditorRoutes } from './features/sql-editor/routes';
+import LoginPage from './features/auth/LoginPage';
+import RequireAuth from './features/auth/RequireAuth';
 
 export const routes: RouteObject[] = [
+  { path: '/login', element: <LoginPage /> },
   {
-    element: (
-      <Layout>
-        <Outlet />
-      </Layout>
-    ),
+    element: <RequireAuth />,
     children: [
-      { path: '/', element: <Navigate to="/dashboards" replace /> },
-      ...dashboardsRoutes,
-      ...chartsRoutes,
-      ...datasetsRoutes,
-      ...datasourceRoutes,
-      ...sqlEditorRoutes,
+      {
+        element: (
+          <Layout>
+            <Outlet />
+          </Layout>
+        ),
+        children: [
+          { path: '/', element: <Navigate to="/dashboards" replace /> },
+          ...dashboardsRoutes,
+          ...chartsRoutes,
+          ...datasetsRoutes,
+          ...datasourceRoutes,
+          ...sqlEditorRoutes,
+        ],
+      },
     ],
   },
 ];

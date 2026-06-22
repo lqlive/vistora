@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   ChevronRightIcon,
@@ -20,16 +20,24 @@ import {
   ClipboardDocumentIcon,
   PlusIcon,
   Square3Stack3DIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  EllipsisHorizontalIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
+import ConfirmDialog from '../../shared/components/ConfirmDialog';
+import TextInputDialog from '../../shared/components/TextInputDialog';
+import { useClickOutside } from '../../shared/hooks/useClickOutside';
 import { getDataSource, listDataSources } from '../datasources/api';
 import { federatedQueryEngine, listEngineTables } from '../../lib/apiClient/engine';
+import { createQueryDocument, deleteQueryDocument, listQueryDocuments, updateQueryDocument } from './api';
 import type {
   DataSourceResponse,
   EngineColumnInfo,
   EngineQueryResult,
   EngineTableInfo,
   GridColumnType,
+  QueryDocumentResponse,
 } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -51,6 +59,7 @@ interface TreeNode {
   label: string;
   icon: NodeIcon;
   selection?: TableSelection;
+  queryDocument?: QueryDocumentResponse;
   children?: TreeNode[];
   defaultOpen?: boolean;
   active?: boolean;
@@ -94,44 +103,116 @@ const TreeItem: React.FC<{
   node: TreeNode;
   depth: number;
   onTableSelect?: (selection: TableSelection) => void;
-}> = ({ node, depth, onTableSelect }) => {
+  onQuerySelect?: (queryDocument: QueryDocumentResponse) => void;
+  onQueryRename?: (queryDocument: QueryDocumentResponse) => void;
+  onQueryDelete?: (queryDocument: QueryDocumentResponse) => void;
+}> = ({ node, depth, onTableSelect, onQuerySelect, onQueryRename, onQueryDelete }) => {
   const [open, setOpen] = useState(!!node.defaultOpen);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const hasChildren = !!node.children?.length;
+  const canEditQuery = node.queryDocument?.isOwner;
+
+  useClickOutside(menuRef, () => setMenuOpen(false));
+
+  const handleSelect = () => {
+    if (node.selection) {
+      onTableSelect?.(node.selection);
+      return;
+    }
+
+    if (node.queryDocument) {
+      onQuerySelect?.(node.queryDocument);
+      return;
+    }
+
+    if (hasChildren) {
+      setOpen((o) => !o);
+    }
+  };
 
   return (
-    <div>
-      <button
-        onClick={() => {
-          if (node.selection) {
-            onTableSelect?.(node.selection);
-            return;
-          }
-
-          if (hasChildren) {
-            setOpen((o) => !o);
-          }
-        }}
+    <div className="relative" ref={menuRef}>
+      <div
         className={classNames(
-          'w-full flex items-center gap-1.5 py-2 pr-2 text-left hover:bg-gray-50 text-[13px]',
+          'group w-full flex items-center gap-1.5 py-2 pr-2 text-left hover:bg-gray-50 text-[13px]',
           node.active ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-700'
         )}
         style={{ paddingLeft: depth * 14 + 8 }}
       >
-        {hasChildren ? (
-          open ? (
-            <ChevronDownIcon className="h-3 w-3 text-gray-400 shrink-0" />
+        <button
+          type="button"
+          onClick={handleSelect}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+        >
+          {hasChildren ? (
+            open ? (
+              <ChevronDownIcon className="h-3 w-3 text-gray-400 shrink-0" />
+            ) : (
+              <ChevronRightIcon className="h-3 w-3 text-gray-400 shrink-0" />
+            )
           ) : (
-            <ChevronRightIcon className="h-3 w-3 text-gray-400 shrink-0" />
-          )
-        ) : (
-          <span className="w-3 shrink-0" />
+            <span className="w-3 shrink-0" />
+          )}
+          {nodeIcon(node.icon)}
+          <span className="truncate font-mono">{node.label}</span>
+        </button>
+        {canEditQuery && (
+          <div className="ml-auto pr-1">
+            <button
+              type="button"
+              title="Query actions"
+              onClick={(event) => {
+                event.stopPropagation();
+                setMenuOpen((value) => !value);
+              }}
+              className={classNames(
+                'hidden rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 group-hover:block',
+                menuOpen && 'block'
+              )}
+            >
+              <EllipsisHorizontalIcon className="h-4 w-4" />
+            </button>
+          </div>
         )}
-        {nodeIcon(node.icon)}
-        <span className="truncate font-mono">{node.label}</span>
-      </button>
+      </div>
+      {canEditQuery && menuOpen && (
+        <div className="absolute right-2 top-7 z-30 w-36 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              onQueryRename?.(node.queryDocument!);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
+          >
+            <PencilSquareIcon className="h-4 w-4 text-gray-400" />
+            Rename
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              onQueryDelete?.(node.queryDocument!);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
+          >
+            <TrashIcon className="h-4 w-4 text-red-400" />
+            Delete
+          </button>
+        </div>
+      )}
       {open &&
         node.children?.map((c) => (
-          <TreeItem key={c.id} node={c} depth={depth + 1} onTableSelect={onTableSelect} />
+          <TreeItem
+            key={c.id}
+            node={c}
+            depth={depth + 1}
+            onTableSelect={onTableSelect}
+            onQuerySelect={onQuerySelect}
+            onQueryRename={onQueryRename}
+            onQueryDelete={onQueryDelete}
+          />
         ))}
     </div>
   );
@@ -164,8 +245,11 @@ const TypeBadge: React.FC<{ type: GridColumnType }> = ({ type }) => {
 // ---------------------------------------------------------------------------
 const SqlEditor: React.FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [datasource, setDatasource] = useState<DataSourceResponse | null>(null);
   const [sourceTables, setSourceTables] = useState<DataSourceTables[]>([]);
+  const [queryDocuments, setQueryDocuments] = useState<QueryDocumentResponse[]>([]);
+  const [activeQueryDocument, setActiveQueryDocument] = useState<QueryDocumentResponse | null>(null);
   const [activeTable, setActiveTable] = useState<EngineTableInfo | null>(null);
   const [result, setResult] = useState<EngineQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -175,6 +259,8 @@ const SqlEditor: React.FC = () => {
   const [search, setSearch] = useState('');
   const [resultTab, setResultTab] = useState<'messages' | 'results'>('results');
   const [sql, setSql] = useState('');
+  const [renamingDocument, setRenamingDocument] = useState<QueryDocumentResponse | null>(null);
+  const [deletingDocument, setDeletingDocument] = useState<QueryDocumentResponse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,19 +287,25 @@ const SqlEditor: React.FC = () => {
         const orderedSources = preferredSource
           ? [preferredSource, ...sources.filter((source) => source.id !== preferredSource.id)]
           : sources;
-        const loadedSourceTables = await Promise.all(
-          orderedSources.map(async (source) => ({
-            dataSource: source,
-            tables: await listEngineTables(source),
-          }))
-        );
+        const [loadedSourceTables, loadedQueryDocuments] = await Promise.all([
+          Promise.all(
+            orderedSources.map(async (source) => ({
+              dataSource: source,
+              tables: await listEngineTables(source),
+            }))
+          ),
+          listQueryDocuments(),
+        ]);
         const firstGroup = loadedSourceTables.find((group) => group.tables.length > 0) ?? loadedSourceTables[0];
         const firstTable = firstGroup?.tables[0] ?? null;
         if (!cancelled) {
           setSourceTables(loadedSourceTables);
+          setQueryDocuments(loadedQueryDocuments);
           setDatasource(firstGroup?.dataSource ?? null);
           setActiveTable(firstTable);
-          setSql(firstTable ? `select * from ${tableReference(firstTable)}` : '');
+          const firstQueryDocument = loadedQueryDocuments.find((document) => document.isOwner) ?? null;
+          setActiveQueryDocument(firstQueryDocument);
+          setSql(firstQueryDocument?.sql ?? (firstTable ? `select * from ${tableReference(firstTable)}` : ''));
           setMessage(firstTable ? 'Ready.' : 'No tables found for this datasource.');
         }
       } catch (loadError) {
@@ -263,11 +355,130 @@ const SqlEditor: React.FC = () => {
   const handleTableSelect = (selection: TableSelection) => {
     setDatasource(selection.dataSource);
     setActiveTable(selection.table);
+    setActiveQueryDocument(null);
     setSql(`select * from ${tableReference(selection.table)}`);
     setResult(null);
     setMessage('Ready.');
     setResultTab('results');
   };
+
+  const handleQuerySelect = (queryDocument: QueryDocumentResponse) => {
+    setActiveQueryDocument(queryDocument);
+    setActiveTable(null);
+    setSql(queryDocument.sql);
+    setResult(null);
+    setMessage('Ready.');
+    setResultTab('results');
+  };
+
+  const handleSaveQuery = useCallback(async () => {
+    if (!sql.trim()) return;
+
+    try {
+      setError(null);
+      setMessage('Saving query...');
+      const saved = activeQueryDocument
+        ? await updateQueryDocument(activeQueryDocument.id, {
+            name: activeQueryDocument.name,
+            sql,
+            isShared: activeQueryDocument.isShared,
+          })
+        : await createQueryDocument({
+            name: nextQueryName(queryDocuments),
+            sql,
+            isShared: false,
+          });
+
+      setQueryDocuments((current) => {
+        const exists = current.some((document) => document.id === saved.id);
+        return exists
+          ? current.map((document) => (document.id === saved.id ? saved : document))
+          : [...current, saved];
+      });
+      setActiveQueryDocument(saved);
+      setActiveTable(null);
+      setMessage('Query saved.');
+      setResultTab('messages');
+    } catch (saveError) {
+      const nextError = saveError instanceof Error ? saveError.message : 'Failed to save query';
+      setError(nextError);
+      setMessage(nextError);
+      setResultTab('messages');
+    }
+  }, [activeQueryDocument, queryDocuments, sql]);
+
+  const handleRenameQueryDocument = useCallback((queryDocument: QueryDocumentResponse) => {
+    setRenamingDocument(queryDocument);
+  }, []);
+
+  const confirmRenameQueryDocument = useCallback(async (nextName: string) => {
+    if (!renamingDocument || nextName === renamingDocument.name) {
+      setRenamingDocument(null);
+      return;
+    }
+
+    try {
+      setError(null);
+      setMessage('Renaming query...');
+      const renamed = await updateQueryDocument(renamingDocument.id, {
+        name: nextName,
+        sql: activeQueryDocument?.id === renamingDocument.id ? sql : renamingDocument.sql,
+        isShared: renamingDocument.isShared,
+      });
+
+      setQueryDocuments((current) =>
+        current.map((document) => (document.id === renamed.id ? renamed : document))
+      );
+      if (activeQueryDocument?.id === renamed.id) {
+        setActiveQueryDocument(renamed);
+      }
+      setMessage('Query renamed.');
+      setResultTab('messages');
+      setRenamingDocument(null);
+    } catch (renameError) {
+      const nextError = renameError instanceof Error ? renameError.message : 'Failed to rename query';
+      setError(nextError);
+      setMessage(nextError);
+      setResultTab('messages');
+    }
+  }, [activeQueryDocument, renamingDocument, sql]);
+
+  const handleDeleteQueryDocument = useCallback((queryDocument: QueryDocumentResponse) => {
+    setDeletingDocument(queryDocument);
+  }, []);
+
+  const confirmDeleteQueryDocument = useCallback(async () => {
+    if (!deletingDocument) return;
+
+    try {
+      setError(null);
+      setMessage('Deleting query...');
+      await deleteQueryDocument(deletingDocument.id);
+
+      const remaining = queryDocuments.filter((document) => document.id !== deletingDocument.id);
+      const wasActive = activeQueryDocument?.id === deletingDocument.id;
+      const nextDocument = wasActive ? remaining.find((document) => document.isOwner) ?? null : activeQueryDocument;
+      const fallbackGroup = sourceTables.find((group) => group.tables.length > 0);
+      const fallbackTable = fallbackGroup?.tables[0] ?? null;
+
+      setQueryDocuments(remaining);
+      setActiveQueryDocument(nextDocument);
+      if (wasActive) {
+        setActiveTable(nextDocument ? null : fallbackTable);
+        setDatasource(nextDocument ? datasource : fallbackGroup?.dataSource ?? null);
+        setSql(nextDocument?.sql ?? (fallbackTable ? `select * from ${tableReference(fallbackTable)}` : ''));
+        setResult(null);
+      }
+      setMessage('Query deleted.');
+      setResultTab('messages');
+      setDeletingDocument(null);
+    } catch (deleteError) {
+      const nextError = deleteError instanceof Error ? deleteError.message : 'Failed to delete query';
+      setError(nextError);
+      setMessage(nextError);
+      setResultTab('messages');
+    }
+  }, [activeQueryDocument, deletingDocument, datasource, queryDocuments, sourceTables]);
 
   const dataSourceTrees: TreeNode[] = useMemo(
     () =>
@@ -280,6 +491,7 @@ const SqlEditor: React.FC = () => {
             icon: 'table' as NodeIcon,
             selection: { dataSource: group.dataSource, table },
             active:
+              !activeQueryDocument &&
               group.dataSource.id === datasource?.id &&
               table.name === activeTable?.name &&
               table.schema === activeTable?.schema,
@@ -309,30 +521,49 @@ const SqlEditor: React.FC = () => {
           ],
         };
       }),
-    [activeTable, datasource, search, sourceTables]
+    [activeQueryDocument, activeTable, datasource, search, sourceTables]
   );
 
   const queriesTree: TreeNode = useMemo(
-    () => ({
-      id: 'queries',
-      label: 'Queries',
-      icon: 'folder',
-      defaultOpen: true,
-      children: [
-        {
-          id: 'my-queries',
-          label: 'My queries',
-          icon: 'folder',
-          defaultOpen: true,
-          children: [
-            { id: 'q1', label: 'SQL query 1', icon: 'query' },
-            { id: 'q3', label: 'SQL query 3', icon: 'query', active: true },
-          ],
-        },
-        { id: 'shared', label: 'Shared queries', icon: 'folder' },
-      ],
-    }),
-    []
+    () => {
+      const visibleDocuments = queryDocuments.filter((document) =>
+        document.name.toLowerCase().includes(search.toLowerCase())
+      );
+      const myQueries = visibleDocuments.filter((document) => document.isOwner);
+      const sharedQueries = visibleDocuments.filter((document) => !document.isOwner && document.isShared);
+
+      const toQueryNode = (document: QueryDocumentResponse): TreeNode => ({
+        id: `query-${document.id}`,
+        label: document.name,
+        icon: 'query',
+        queryDocument: document,
+        active: activeQueryDocument?.id === document.id,
+      });
+
+      return {
+        id: 'queries',
+        label: 'Queries',
+        icon: 'folder',
+        defaultOpen: true,
+        children: [
+          {
+            id: 'my-queries',
+            label: 'My queries',
+            icon: 'folder',
+            defaultOpen: true,
+            children: myQueries.map(toQueryNode),
+          },
+          {
+            id: 'shared',
+            label: 'Shared queries',
+            icon: 'folder',
+            defaultOpen: true,
+            children: sharedQueries.map(toQueryNode),
+          },
+        ],
+      };
+    },
+    [activeQueryDocument, queryDocuments, search]
   );
 
   const columns = result?.columns ?? [];
@@ -360,13 +591,21 @@ const SqlEditor: React.FC = () => {
   );
 
   return (
+    <>
     <div className="flex h-[calc(100vh-7rem)] border border-gray-200 rounded-lg overflow-hidden bg-white">
       {/* Explorer */}
       <aside className="w-64 shrink-0 border-r border-gray-100 flex flex-col">
         <div className="h-9 flex items-center justify-between px-3 border-b border-gray-100">
           <span className="text-xs font-semibold text-gray-700">Explorer</span>
           <div className="flex items-center gap-2 text-gray-400">
-            <PlusIcon className="h-4 w-4 hover:text-gray-700 cursor-pointer" />
+            <button
+              type="button"
+              onClick={() => navigate('/datasources?create=1')}
+              className="hover:text-gray-700"
+              title="Add datasource"
+            >
+              <PlusIcon className="h-4 w-4" />
+            </button>
             <MagnifyingGlassIcon className="h-4 w-4 hover:text-gray-700 cursor-pointer" />
           </div>
         </div>
@@ -383,9 +622,23 @@ const SqlEditor: React.FC = () => {
         </div>
         <div className="flex-1 overflow-y-auto py-1">
           {dataSourceTrees.map((tree) => (
-            <TreeItem key={tree.id} node={tree} depth={0} onTableSelect={handleTableSelect} />
+            <TreeItem
+              key={tree.id}
+              node={tree}
+              depth={0}
+              onTableSelect={handleTableSelect}
+              onQuerySelect={handleQuerySelect}
+              onQueryRename={handleRenameQueryDocument}
+              onQueryDelete={handleDeleteQueryDocument}
+            />
           ))}
-          <TreeItem node={queriesTree} depth={0} />
+          <TreeItem
+            node={queriesTree}
+            depth={0}
+            onQuerySelect={handleQuerySelect}
+            onQueryRename={handleRenameQueryDocument}
+            onQueryDelete={handleDeleteQueryDocument}
+          />
         </div>
       </aside>
 
@@ -395,7 +648,7 @@ const SqlEditor: React.FC = () => {
         <div className="h-9 flex items-center justify-between border-b border-gray-100 bg-gray-50/60 pl-2 pr-3">
           <div className="flex items-center gap-2 px-3 h-8 bg-white border border-b-0 border-gray-200 rounded-t-md text-sm text-gray-900 -mb-px">
             <DocumentTextIcon className="h-4 w-4 text-green-600" />
-            <span className="text-xs">SQL query 3</span>
+            <span className="text-xs">{activeQueryDocument?.name ?? 'SQL query'}</span>
             <XMarkIcon className="h-3.5 w-3.5 text-gray-400 hover:text-gray-700" />
           </div>
           <ArrowPathIcon className="h-4 w-4 text-gray-400 hover:text-gray-700 cursor-pointer" />
@@ -411,7 +664,12 @@ const SqlEditor: React.FC = () => {
             disabled={running || !datasource || !sql.trim()}
           />
           <span className="w-px h-4 bg-gray-200 mx-1" />
-          <ToolbarButton icon={<BookmarkIcon className="h-4 w-4" />} label="Save" />
+          <ToolbarButton
+            icon={<BookmarkIcon className="h-4 w-4" />}
+            label="Save"
+            onClick={handleSaveQuery}
+            disabled={!sql.trim()}
+          />
           <ToolbarButton icon={<ViewColumnsIcon className="h-4 w-4" />} label="Save as view" />
           <ToolbarButton icon={<VariableIcon className="h-4 w-4" />} label="New measure" />
           <ToolbarButton icon={<ClipboardDocumentIcon className="h-4 w-4" />} label="Copy query" />
@@ -546,6 +804,25 @@ const SqlEditor: React.FC = () => {
         </div>
       </section>
     </div>
+    <TextInputDialog
+      open={!!renamingDocument}
+      title="Rename query"
+      label="Query name"
+      initialValue={renamingDocument?.name ?? ''}
+      confirmLabel="Rename"
+      onCancel={() => setRenamingDocument(null)}
+      onConfirm={confirmRenameQueryDocument}
+    />
+    <ConfirmDialog
+      open={!!deletingDocument}
+      title="Delete query"
+      message={`Delete "${deletingDocument?.name ?? 'this query'}"? This action cannot be undone.`}
+      confirmLabel="Delete"
+      destructive
+      onCancel={() => setDeletingDocument(null)}
+      onConfirm={confirmDeleteQueryDocument}
+    />
+    </>
   );
 };
 
@@ -555,6 +832,16 @@ const tableReference = (table: EngineTableInfo): string =>
     : quoteIdentifier(table.name);
 
 const quoteIdentifier = (value: string): string => `"${value.replace(/"/g, '""')}"`;
+
+const nextQueryName = (documents: QueryDocumentResponse[]): string => {
+  const names = new Set(documents.map((document) => document.name.toLowerCase()));
+  for (let index = documents.length + 1; ; index++) {
+    const name = `SQL query ${index}`;
+    if (!names.has(name.toLowerCase())) {
+      return name;
+    }
+  }
+};
 
 const mapEngineColumnType = (column: EngineColumnInfo): GridColumnType => {
   const type = column.type.toLowerCase();
