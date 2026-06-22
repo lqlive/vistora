@@ -29,19 +29,44 @@ export type ChartVizType =
   | 'Treemap';
 
 export interface ChartItem {
-  id: number;
+  id: string | number;
   name: string;
   vizType: ChartVizType;
   dataset: string;
+  description?: string | null;
+  configuration?: string | null;
   owners: BiOwner[];
   modified: string;
   modifiedBy: string;
   favorite: boolean;
 }
 
+export interface ChartResponse {
+  id: string;
+  name: string;
+  vizType: string;
+  dataset: string;
+  description?: string | null;
+  configuration?: string | null;
+  favorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChartRequest {
+  name: string;
+  vizType: string;
+  dataset: string;
+  description?: string | null;
+  configuration?: string | null;
+  favorite: boolean;
+}
+
 export interface DatasetItem {
   id: string | number;
   name: string;
+  sql: string;
+  description?: string | null;
   type: 'physical' | 'virtual';
   database: string;
   schema: string;
@@ -157,6 +182,12 @@ export interface DatasetResponse {
   columns: DatasetColumnResponse[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DatasetRequest {
+  name: string;
+  sql: string;
+  description?: string | null;
 }
 
 export interface EngineDataSourceConnection extends DataSourceConfiguration {

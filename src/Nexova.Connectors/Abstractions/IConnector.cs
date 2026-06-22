@@ -7,6 +7,6 @@ public interface IConnector
 {
     DataSourceType Type { get; }
 
-    Task RegisterAsync(SessionContext context, string tableName, DataSource dataSource,
+    Task RegisterAsync(SessionContext context, string sourceName, DataSource dataSource,
         CancellationToken cancellationToken);
 }

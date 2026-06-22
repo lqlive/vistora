@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Apache.DataFusion;
 using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
@@ -10,7 +10,7 @@ public sealed class FileConnector(IStorageService storageService) : IConnector
 {
     public DataSourceType Type => DataSourceType.Files;
 
-    public async Task RegisterAsync(SessionContext context, string tableName,
+    public async Task RegisterAsync(SessionContext context, string sourceName,
         DataSource dataSource, CancellationToken cancellationToken)
     {
         foreach (var asset in dataSource.FileAssets)
@@ -18,7 +18,7 @@ public sealed class FileConnector(IStorageService storageService) : IConnector
             var uri = await storageService.GetDownloadUriAsync(asset.StoragePath, cancellationToken);
             var path = uri.IsFile ? uri.LocalPath : uri.ToString();
 
-            Register(context, tableName, ResolveTableName(asset), path, asset);
+            Register(context, sourceName, ResolveTableName(asset), path, asset);
         }
     }
 

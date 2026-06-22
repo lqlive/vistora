@@ -1,4 +1,4 @@
-﻿using Apache.DataFusion;
+using Apache.DataFusion;
 using Apache.DataFusion.TableProviders.MongoDB;
 using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
@@ -9,10 +9,10 @@ public sealed class MongoDbConnector : IConnector
 {
     public DataSourceType Type => DataSourceType.MongoDb;
 
-    public Task RegisterAsync(SessionContext context, string tableName,
+    public Task RegisterAsync(SessionContext context, string sourceName,
         DataSource dataSource, CancellationToken cancellationToken)
     {
-        var options = DataSourceConnectionStrings.MongoDbOptions(dataSource.Configuration, dataSource.Name);
+        var options = DataSourceConnectionStrings.MongoDbOptions(dataSource.Configuration, sourceName);
 
         context.RegisterMongoDb(options);
         return Task.CompletedTask;

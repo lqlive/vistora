@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PlusIcon,
@@ -11,8 +11,10 @@ import FilterBar from '../../shared/components/FilterBar';
 import DataTable, { Column } from '../../shared/components/DataTable';
 import Tag from '../../shared/components/Tag';
 import OwnerAvatars from '../../shared/components/OwnerAvatars';
-import { listDatasets, mapDatasetToItem } from './api';
-import type { DatasetItem } from '../../types';
+import ConfirmDialog from '../../shared/components/ConfirmDialog';
+import { createDataset, deleteDataset, listDatasets, mapDatasetToItem, updateDataset } from './api';
+import DatasetDialog from './DatasetDialog';
+import type { DatasetItem, DatasetRequest } from '../../types';
 
 const Datasets: React.FC = () => {
   const [datasets, setDatasets] = useState<DatasetItem[]>([]);
@@ -21,11 +23,15 @@ const Datasets: React.FC = () => {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('All');
   const [database, setDatabase] = useState('All');
+  const [editingDataset, setEditingDataset] = useState<DatasetItem | null>(null);
+  const [deletingDataset, setDeletingDataset] = useState<DatasetItem | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadDatasets = async () => {
+    const load = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -44,7 +50,7 @@ const Datasets: React.FC = () => {
       }
     };
 
-    loadDatasets();
+    load();
 
     return () => {
       cancelled = true;
@@ -64,6 +70,53 @@ const Datasets: React.FC = () => {
       return true;
     });
   }, [datasets, search, type, database]);
+
+  const handleCreateDataset = useCallback(() => {
+    setEditingDataset(null);
+    setDialogOpen(true);
+  }, []);
+
+  const handleEditDataset = useCallback((dataset: DatasetItem) => {
+    setEditingDataset(dataset);
+    setDialogOpen(true);
+  }, []);
+
+  const handleSaveDataset = useCallback(async (request: DatasetRequest) => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      const saved = editingDataset
+        ? await updateDataset(String(editingDataset.id), request)
+        : await createDataset(request);
+
+      setDatasets((current) => {
+        const item = mapDatasetToItem(saved);
+        return editingDataset
+          ? current.map((dataset) => (dataset.id === item.id ? item : dataset))
+          : [...current, item];
+      });
+      setDialogOpen(false);
+      setEditingDataset(null);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Failed to save dataset');
+    } finally {
+      setSaving(false);
+    }
+  }, [editingDataset]);
+
+  const confirmDeleteDataset = useCallback(async () => {
+    if (!deletingDataset) return;
+
+    try {
+      setError(null);
+      await deleteDataset(String(deletingDataset.id));
+      setDatasets((current) => current.filter((dataset) => dataset.id !== deletingDataset.id));
+      setDeletingDataset(null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Failed to delete dataset');
+    }
+  }, [deletingDataset]);
 
   const columns: Column<DatasetItem>[] = [
     {
@@ -99,10 +152,22 @@ const Datasets: React.FC = () => {
       key: 'actions',
       header: '',
       className: 'w-px',
-      render: () => (
+      render: (d) => (
         <div className="flex items-center gap-3 text-gray-400">
-          <button className="hover:text-gray-900" title="Edit"><PencilSquareIcon className="h-4 w-4" /></button>
-          <button className="hover:text-error-400" title="Delete"><TrashIcon className="h-4 w-4" /></button>
+          <button
+            className="hover:text-gray-900"
+            title="Edit"
+            onClick={() => handleEditDataset(d)}
+          >
+            <PencilSquareIcon className="h-4 w-4" />
+          </button>
+          <button
+            className="hover:text-error-400"
+            title="Delete"
+            onClick={() => setDeletingDataset(d)}
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
         </div>
       ),
     },
@@ -113,7 +178,7 @@ const Datasets: React.FC = () => {
       <PageHeader
         title="Datasets"
         actions={
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={handleCreateDataset}>
             <PlusIcon className="h-4 w-4" /> Dataset
           </button>
         }
@@ -141,6 +206,26 @@ const Datasets: React.FC = () => {
         rowKey={(d) => d.id}
         loading={loading}
         emptyText="No datasets found"
+      />
+      <DatasetDialog
+        open={dialogOpen}
+        dataset={editingDataset}
+        saving={saving}
+        onCancel={() => {
+          if (saving) return;
+          setDialogOpen(false);
+          setEditingDataset(null);
+        }}
+        onConfirm={handleSaveDataset}
+      />
+      <ConfirmDialog
+        open={!!deletingDataset}
+        title="Delete dataset"
+        message={`Delete "${deletingDataset?.name ?? 'this dataset'}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setDeletingDataset(null)}
+        onConfirm={confirmDeleteDataset}
       />
     </div>
   );

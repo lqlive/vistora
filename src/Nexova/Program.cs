@@ -1,7 +1,11 @@
 using FluentValidation;
+using Nexova.Charts;
+using Nexova.Charts.Http;
 using Nexova.Connectors;
 using Nexova.Core.Management;
 using Nexova.Database.PostgreSql;
+using Nexova.Datasets;
+using Nexova.Datasets.Http;
 using Nexova.DataSources;
 using Nexova.DataSources.Http;
 using Nexova.Queries;
@@ -21,6 +25,8 @@ builder.Services.AddNexovaCore()
     .AddDataFusionConnectors();
 
 builder.Services.AddScoped<DataSourceService>();
+builder.Services.AddScoped<DatasetService>();
+builder.Services.AddScoped<ChartService>();
 builder.Services.AddScoped<QueryService>();
 builder.Services.AddScoped<QueryDocumentService>();
 builder.Services.AddScoped<UserService>();
@@ -34,6 +40,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapDataSourceApi().RequireAuthorization();
+app.MapDatasetApi().RequireAuthorization();
+app.MapChartApi().RequireAuthorization();
 app.MapQueryApi().RequireAuthorization();
 app.MapQueryDocumentApi().RequireAuthorization();
 app.MapAuthApi();

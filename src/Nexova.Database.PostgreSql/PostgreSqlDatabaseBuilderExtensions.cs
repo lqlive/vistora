@@ -15,7 +15,11 @@ public static class PostgreSqlDatabaseBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.AddDbContextProvider<PostgreSqlContext, PostgreSqlDataSourceStore, PostgreSqlDatasetStore>(
+        builder.AddDbContextProvider<
+            PostgreSqlContext,
+            PostgreSqlDataSourceStore,
+            PostgreSqlDatasetStore,
+            PostgreSqlChartStore>(
             Name,
             (provider, options) =>
             {

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   PlusIcon,
   PencilSquareIcon,
@@ -15,7 +16,8 @@ import DataTable, { Column } from '../../shared/components/DataTable';
 import Tag from '../../shared/components/Tag';
 import OwnerAvatars from '../../shared/components/OwnerAvatars';
 import FavoriteStar from '../../shared/components/FavoriteStar';
-import { charts as initialCharts } from '../../mocks/mockData';
+import ConfirmDialog from '../../shared/components/ConfirmDialog';
+import { deleteChart, listCharts, mapChartToItem, updateChart } from './api';
 import type { ChartItem, ChartVizType } from '../../types';
 
 const vizIcon = (viz: ChartVizType) => {
@@ -36,18 +38,87 @@ const vizIcon = (viz: ChartVizType) => {
 };
 
 const Charts: React.FC = () => {
-  const [items, setItems] = useState<ChartItem[]>(initialCharts);
+  const navigate = useNavigate();
+  const [items, setItems] = useState<ChartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [viz, setViz] = useState('All');
+  const [deletingChart, setDeletingChart] = useState<ChartItem | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const charts = await listCharts();
+        if (!cancelled) {
+          setItems(charts.map(mapChartToItem));
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : 'Failed to load charts');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const vizOptions = useMemo(
-    () => ['All', ...Array.from(new Set(initialCharts.map((c) => c.vizType)))],
-    []
+    () => ['All', ...Array.from(new Set(items.map((c) => c.vizType)))],
+    [items]
   );
 
-  const toggleFavorite = (id: number) =>
-    setItems((prev) => prev.map((c) => (c.id === id ? { ...c, favorite: !c.favorite } : c)));
+  const toggleFavorite = useCallback(async (chart: ChartItem) => {
+    const nextFavorite = !chart.favorite;
+    setItems((current) =>
+      current.map((item) => (item.id === chart.id ? { ...item, favorite: nextFavorite } : item))
+    );
+
+    try {
+      setError(null);
+      const updated = await updateChart(String(chart.id), {
+        name: chart.name,
+        vizType: chart.vizType,
+        dataset: chart.dataset,
+        description: chart.description,
+        configuration: chart.configuration,
+        favorite: nextFavorite,
+      });
+      const item = mapChartToItem(updated);
+      setItems((current) => current.map((value) => (value.id === item.id ? item : value)));
+    } catch (toggleError) {
+      setItems((current) =>
+        current.map((item) => (item.id === chart.id ? { ...item, favorite: chart.favorite } : item))
+      );
+      setError(toggleError instanceof Error ? toggleError.message : 'Failed to update chart');
+    }
+  }, []);
+
+  const confirmDeleteChart = useCallback(async () => {
+    if (!deletingChart) return;
+
+    try {
+      setError(null);
+      await deleteChart(String(deletingChart.id));
+      setItems((current) => current.filter((chart) => chart.id !== deletingChart.id));
+      setDeletingChart(null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Failed to delete chart');
+    }
+  }, [deletingChart]);
 
   const filtered = useMemo(() => {
     return items.filter((c) => {
@@ -66,9 +137,14 @@ const Charts: React.FC = () => {
         const Icon = vizIcon(c.vizType);
         return (
           <div className="flex items-center gap-2">
-            <FavoriteStar active={c.favorite} onToggle={() => toggleFavorite(c.id)} />
+            <FavoriteStar active={c.favorite} onToggle={() => toggleFavorite(c)} />
             <Icon className="h-4 w-4 text-accent-400" />
-            <span className="font-medium text-gray-900 hover:underline cursor-pointer">{c.name}</span>
+            <Link
+              to={`/charts/${c.id}/edit`}
+              className="font-medium text-gray-900 hover:underline"
+            >
+              {c.name}
+            </Link>
           </div>
         );
       },
@@ -82,10 +158,22 @@ const Charts: React.FC = () => {
       key: 'actions',
       header: '',
       className: 'w-px',
-      render: () => (
+      render: (c) => (
         <div className="flex items-center gap-3 text-gray-400">
-          <button className="hover:text-gray-900" title="Edit"><PencilSquareIcon className="h-4 w-4" /></button>
-          <button className="hover:text-error-400" title="Delete"><TrashIcon className="h-4 w-4" /></button>
+          <button
+            className="hover:text-gray-900"
+            title="Edit"
+            onClick={() => navigate(`/charts/${c.id}/edit`)}
+          >
+            <PencilSquareIcon className="h-4 w-4" />
+          </button>
+          <button
+            className="hover:text-error-400"
+            title="Delete"
+            onClick={() => setDeletingChart(c)}
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
         </div>
       ),
     },
@@ -96,7 +184,7 @@ const Charts: React.FC = () => {
       <PageHeader
         title="Charts"
         actions={
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/charts/new')}>
             <PlusIcon className="h-4 w-4" /> Chart
           </button>
         }
@@ -116,7 +204,28 @@ const Charts: React.FC = () => {
         filters={[{ label: 'Type', options: vizOptions, value: viz, onChange: setViz }]}
       />
 
-      <DataTable columns={columns} rows={filtered} rowKey={(c) => c.id} emptyText="No charts found" />
+      {error && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <DataTable
+        columns={columns}
+        rows={loading ? [] : filtered}
+        rowKey={(c) => c.id}
+        loading={loading}
+        emptyText="No charts found"
+      />
+      <ConfirmDialog
+        open={!!deletingChart}
+        title="Delete chart"
+        message={`Delete "${deletingChart?.name ?? 'this chart'}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setDeletingChart(null)}
+        onConfirm={confirmDeleteChart}
+      />
     </div>
   );
 };

@@ -10,6 +10,7 @@ public abstract class AbstractContext<TContext> : DbContext, IContext
     { }
     public DbSet<DataSource> DataSources { get; set; } 
     public DbSet<Dataset> Datasets { get; set; }
+    public DbSet<Chart> Charts { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<QueryDocument> QueryDocuments { get; set; }
     public bool SupportsLimitInSubqueries => true;

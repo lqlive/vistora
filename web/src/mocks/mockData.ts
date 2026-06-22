@@ -40,12 +40,12 @@ export const charts: ChartItem[] = [
 ];
 
 export const datasets: DatasetItem[] = [
-  { id: 1, name: 'sales_fact', type: 'physical', database: 'PostgreSQL', schema: 'public', owners: [owner('Zhang Wei')], charts: 14, modified: '1 day ago' },
-  { id: 2, name: 'user_events', type: 'physical', database: 'ClickHouse', schema: 'analytics', owners: [owner('Li Ming')], charts: 9, modified: '2 days ago' },
-  { id: 3, name: 'marketing_funnel', type: 'virtual', database: 'PostgreSQL', schema: 'marketing', owners: [owner('Wang Fang')], charts: 6, modified: '3 days ago' },
-  { id: 4, name: 'orders', type: 'physical', database: 'MySQL', schema: 'shop', owners: [owner('Chen Qiang')], charts: 7, modified: '4 days ago' },
-  { id: 5, name: 'product_catalog', type: 'physical', database: 'MySQL', schema: 'shop', owners: [owner('Liu Jie')], charts: 4, modified: '5 days ago' },
-  { id: 6, name: 'customer_360', type: 'virtual', database: 'Snowflake', schema: 'crm', owners: [owner('Sarah Kim')], charts: 11, modified: '1 week ago' },
+  { id: 1, name: 'sales_fact', sql: 'select * from public.sales_fact', type: 'physical', database: 'PostgreSQL', schema: 'public', owners: [owner('Zhang Wei')], charts: 14, modified: '1 day ago' },
+  { id: 2, name: 'user_events', sql: 'select * from analytics.user_events', type: 'physical', database: 'ClickHouse', schema: 'analytics', owners: [owner('Li Ming')], charts: 9, modified: '2 days ago' },
+  { id: 3, name: 'marketing_funnel', sql: 'select * from marketing.marketing_funnel', type: 'virtual', database: 'PostgreSQL', schema: 'marketing', owners: [owner('Wang Fang')], charts: 6, modified: '3 days ago' },
+  { id: 4, name: 'orders', sql: 'select * from shop.orders', type: 'physical', database: 'MySQL', schema: 'shop', owners: [owner('Chen Qiang')], charts: 7, modified: '4 days ago' },
+  { id: 5, name: 'product_catalog', sql: 'select * from shop.product_catalog', type: 'physical', database: 'MySQL', schema: 'shop', owners: [owner('Liu Jie')], charts: 4, modified: '5 days ago' },
+  { id: 6, name: 'customer_360', sql: 'select * from crm.customer_360', type: 'virtual', database: 'Snowflake', schema: 'crm', owners: [owner('Sarah Kim')], charts: 11, modified: '1 week ago' },
 ];
 
 export const overviewStats = [
