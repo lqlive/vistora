@@ -17,6 +17,7 @@ public static class INexovaBuilderExtensions
         services.AddKeyedScoped<IDataSourceStore, InMemoryDataSourceStore>(InMemoryStoreOptions.Name);
         services.AddKeyedScoped<IDatasetStore, InMemoryDatasetStore>(InMemoryStoreOptions.Name);
         services.AddKeyedScoped<IChartStore, InMemoryChartStore>(InMemoryStoreOptions.Name);
+        services.AddKeyedScoped<IDashboardStore, InMemoryDashboardStore>(InMemoryStoreOptions.Name);
         services.AddKeyedScoped<IUserStore, InMemoryUserStore>(InMemoryStoreOptions.Name);
         services.AddKeyedScoped<IQueryDocumentStore, InMemoryQueryDocumentStore>(InMemoryStoreOptions.Name);
 

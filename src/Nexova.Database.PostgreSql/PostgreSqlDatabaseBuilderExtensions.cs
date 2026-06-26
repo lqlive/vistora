@@ -27,6 +27,7 @@ public static class PostgreSqlDatabaseBuilderExtensions
                 options.UseNpgsql(databaseOptions.ConnectionString);
             });
 
+        builder.Services.AddKeyedScoped<IDashboardStore, PostgreSqlDashboardStore>(Name);
         builder.Services.AddKeyedScoped<IUserStore, PostgreSqlUserStore>(Name);
         builder.Services.AddKeyedScoped<IQueryDocumentStore, PostgreSqlQueryDocumentStore>(Name);
 

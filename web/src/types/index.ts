@@ -6,14 +6,35 @@ export interface BiOwner {
 }
 
 export interface DashboardItem {
-  id: number;
+  id: string | number;
   title: string;
   status: 'published' | 'draft';
+  description?: string | null;
+  configuration?: string | null;
   owners: BiOwner[];
   modified: string;
   modifiedBy: string;
   favorite: boolean;
   charts: number;
+}
+
+export interface DashboardResponse {
+  id: string;
+  name: string;
+  status: string;
+  description?: string | null;
+  configuration?: string | null;
+  favorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardRequest {
+  name: string;
+  status: string;
+  description?: string | null;
+  configuration?: string | null;
+  favorite: boolean;
 }
 
 export type ChartVizType =
