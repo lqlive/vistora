@@ -10,6 +10,11 @@ public interface IQueryExecutor
         int? maxRows = null,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ColumnInfo>> DescribeAsync(
+        string sql,
+        IReadOnlyCollection<DataSource> dataSources,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<TableInfo>> ListTablesAsync(
         DataSource dataSource,
         CancellationToken cancellationToken = default);

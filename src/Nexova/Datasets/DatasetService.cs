@@ -1,4 +1,6 @@
+using System.Text.Json;
 using ErrorOr;
+using Nexova.Connectors.Abstractions;
 using Nexova.Core.Entities;
 using Nexova.Core.Stores;
 using Nexova.Datasets.Errors;
@@ -6,7 +8,10 @@ using Nexova.Datasets.Models;
 
 namespace Nexova.Datasets;
 
-public sealed class DatasetService(IDatasetStore datasetStore)
+public sealed class DatasetService(
+    IDatasetStore datasetStore,
+    IDataSourceStore dataSourceStore,
+    IQueryExecutor queryExecutor)
 {
     public async Task<IReadOnlyList<DatasetResponse>> ListAsync(CancellationToken cancellationToken = default)
     {
@@ -49,6 +54,8 @@ public sealed class DatasetService(IDatasetStore datasetStore)
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim()
         };
 
+        dataset.ColumnsJson = await InferColumnsJsonAsync(dataset.Sql, cancellationToken);
+
         var created = await datasetStore.CreateAsync(dataset, cancellationToken);
         if (!created)
         {
@@ -82,6 +89,7 @@ public sealed class DatasetService(IDatasetStore datasetStore)
         dataset.Name = request.Name.Trim();
         dataset.Sql = request.Sql.Trim();
         dataset.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        dataset.ColumnsJson = await InferColumnsJsonAsync(dataset.Sql, cancellationToken);
 
         var updated = await datasetStore.UpdateAsync(dataset, cancellationToken);
         if (!updated)
@@ -103,5 +111,40 @@ public sealed class DatasetService(IDatasetStore datasetStore)
         }
 
         return Result.Deleted;
+    }
+
+    private async Task<string?> InferColumnsJsonAsync(string sql, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var dataSources = await dataSourceStore.ListAsync(cancellationToken);
+            var columns = await queryExecutor.DescribeAsync(sql, dataSources, cancellationToken);
+            if (columns.Count == 0)
+            {
+                return null;
+            }
+
+            var infos = columns
+                .Select((column, ordinal) => new DatasetColumnInfo(
+                    column.Name,
+                    column.Type,
+                    column.Nullable,
+                    column.Precision,
+                    column.Scale,
+                    ordinal))
+                .ToList();
+
+            return JsonSerializer.Serialize(infos);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Best-effort schema inference: a bad SQL or unavailable data source
+            // should not block saving the dataset.
+            return null;
+        }
     }
 }

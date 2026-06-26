@@ -38,6 +38,18 @@ public sealed class DataFusionQueryExecutor(RegisteredSessionProvider sessionPro
         return await ReadResultAsync(dataFrame, maxRows, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ColumnInfo>> DescribeAsync(
+        string sql,
+        IReadOnlyCollection<DataSource> dataSources,
+        CancellationToken cancellationToken = default)
+    {
+        var context = await sessionProvider.GetAsync(dataSources, cancellationToken);
+
+        var inner = sql.TrimEnd().TrimEnd(';');
+        using var dataFrame = context.Sql($"SELECT * FROM ({inner}) AS nexova_schema LIMIT 0");
+        return MapColumns(dataFrame.Schema());
+    }
+
     public async Task<IReadOnlyList<TableInfo>> ListTablesAsync(
         DataSource dataSource,
         CancellationToken cancellationToken = default)

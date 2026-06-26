@@ -9,12 +9,12 @@ import {
   MagnifyingGlassIcon,
   PresentationChartLineIcon,
   Squares2X2Icon,
-  StarIcon,
   TableCellsIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import PageHeader from '../../shared/components/PageHeader';
 import { listDatasets } from '../datasets/api';
+import ChartCanvas from './ChartCanvas';
 import { createChart, getChart, mapChartToRequest, updateChart } from './api';
 import type {
   ChartRequest,
@@ -264,28 +264,16 @@ const ChartEditorPage: React.FC = () => {
           className="input max-w-sm"
           placeholder="Chart name"
         />
-        <label className="flex items-center gap-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={request.favorite}
-            onChange={(event) =>
-              setRequest((current) => ({ ...current, favorite: event.target.checked }))
-            }
-            className="h-4 w-4 rounded border-gray-300 text-gray-900"
-          />
-          <StarIcon className="h-4 w-4 text-amber-400" /> Favorite
-        </label>
       </div>
 
       <div className="grid min-h-[560px] grid-cols-[minmax(0,1fr)_300px_260px] overflow-hidden rounded-b-xl border border-t-0 border-gray-200">
         {/* Canvas */}
         <section className="flex flex-col bg-gray-100 p-6">
-          <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-gray-200 bg-white">
+          <div className="flex flex-1 flex-col items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white">
             <CanvasPreview
               vizType={request.vizType}
               name={request.name}
               wells={wells}
-              activeWells={activeWells}
               hasFields={assignedCount > 0}
             />
           </div>
@@ -387,29 +375,62 @@ const ChartEditorPage: React.FC = () => {
               </p>
             ) : (
               <ul className="space-y-0.5">
-                {filteredFields.map((field) => (
-                  <li
-                    key={field.id || field.name}
-                    draggable
-                    onDragStart={(event) => event.dataTransfer.setData('text/plain', field.name)}
-                    className="flex cursor-grab items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 active:cursor-grabbing"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={fieldInAnyWell(field.name)}
-                      onChange={() => toggleField(field.name)}
-                      className="h-3.5 w-3.5 rounded border-gray-300 text-gray-900"
-                    />
-                    <span
-                      className={`w-7 text-center text-[10px] font-semibold ${
-                        isNumericField(field) ? 'text-blue-500' : 'text-amber-500'
-                      }`}
-                    >
-                      {isNumericField(field) ? '123' : 'Abc'}
-                    </span>
-                    <span className="truncate">{field.name}</span>
-                  </li>
-                ))}
+                {filteredFields.map((field) => {
+                  const selected = fieldInAnyWell(field.name);
+                  return (
+                    <li key={field.id || field.name}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selected}
+                        draggable
+                        onDragStart={(event) =>
+                          event.dataTransfer.setData('text/plain', field.name)
+                        }
+                        onClick={() => toggleField(field.name)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleField(field.name);
+                          }
+                        }}
+                        className={`group flex select-none items-center gap-2.5 rounded-md px-2 py-2 text-sm text-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
+                          selected ? 'bg-gray-100' : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          readOnly
+                          tabIndex={-1}
+                          className="pointer-events-none h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900"
+                        />
+                        <span
+                          className={`w-7 shrink-0 text-center text-[10px] font-semibold ${
+                            isNumericField(field) ? 'text-blue-500' : 'text-amber-500'
+                          }`}
+                        >
+                          {isNumericField(field) ? '123' : 'Abc'}
+                        </span>
+                        <span className="flex-1 truncate">{field.name}</span>
+                        <span
+                          aria-hidden
+                          title="Drag to a well"
+                          className="ml-1 hidden shrink-0 cursor-grab text-gray-300 group-hover:block active:cursor-grabbing"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                            <circle cx="3" cy="2" r="1" />
+                            <circle cx="9" cy="2" r="1" />
+                            <circle cx="3" cy="6" r="1" />
+                            <circle cx="9" cy="6" r="1" />
+                            <circle cx="3" cy="10" r="1" />
+                            <circle cx="9" cy="10" r="1" />
+                          </svg>
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -478,40 +499,32 @@ interface CanvasPreviewProps {
   vizType: string;
   name: string;
   wells: ChartWells;
-  activeWells: { key: WellKey; label: string }[];
   hasFields: boolean;
 }
 
-const CanvasPreview: React.FC<CanvasPreviewProps> = ({
-  vizType,
-  name,
-  wells,
-  activeWells,
-  hasFields,
-}) => {
+const CanvasPreview: React.FC<CanvasPreviewProps> = ({ vizType, name, wells, hasFields }) => {
   const meta = vizCatalog.find((item) => item.type === vizType) ?? vizCatalog[0];
   const Icon = meta.Icon;
 
-  return (
-    <div className="flex w-full max-w-md flex-col items-center px-6 text-center">
-      {name && <h3 className="mb-4 text-sm font-semibold text-gray-900">{name}</h3>}
-      <Icon className="h-16 w-16 text-gray-300" />
-      {hasFields ? (
-        <dl className="mt-5 w-full space-y-1.5 text-left text-xs">
-          {activeWells
-            .filter((well) => wells[well.key].length > 0)
-            .map((well) => (
-              <div key={well.key} className="flex gap-2">
-                <dt className="w-16 shrink-0 text-gray-400">{well.label}</dt>
-                <dd className="font-medium text-gray-700">{wells[well.key].join(', ')}</dd>
-              </div>
-            ))}
-        </dl>
-      ) : (
+  if (!hasFields) {
+    return (
+      <div className="flex w-full max-w-md flex-col items-center px-6 text-center">
+        <Icon className="h-16 w-16 text-gray-300" />
         <p className="mt-4 text-sm text-gray-400">
           Drag fields onto the wells to build your {vizType.toLowerCase()}.
         </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full flex-col px-4 py-3">
+      {name && (
+        <h3 className="mb-2 shrink-0 text-center text-sm font-semibold text-gray-900">{name}</h3>
       )}
+      <div className="min-h-0 flex-1">
+        <ChartCanvas vizType={vizType} wells={wells} />
+      </div>
     </div>
   );
 };

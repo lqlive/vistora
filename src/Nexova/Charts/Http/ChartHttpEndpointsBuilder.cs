@@ -10,8 +10,10 @@ public static class ChartHttpEndpointsBuilder
         var api = app.MapGroup("/api/charts");
         api.MapGet("/", List);
         api.MapGet("/{id:guid}", Get);
-        api.MapPost("/", Create);
-        api.MapPut("/{id:guid}", Update);
+        api.MapPost("/", Create)
+            .WithValidation<ChartRequest>();
+        api.MapPut("/{id:guid}", Update)
+            .WithValidation<ChartRequest>();
         api.MapDelete("/{id:guid}", Delete);
 
         return api;

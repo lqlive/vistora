@@ -31,12 +31,6 @@ public sealed class ChartService(IChartStore chartStore)
         ChartRequest request,
         CancellationToken cancellationToken = default)
     {
-        var validation = Validate(request);
-        if (validation.IsError)
-        {
-            return validation.Errors;
-        }
-
         var chart = new Chart
         {
             Id = Guid.NewGuid(),
@@ -62,12 +56,6 @@ public sealed class ChartService(IChartStore chartStore)
         ChartRequest request,
         CancellationToken cancellationToken = default)
     {
-        var validation = Validate(request);
-        if (validation.IsError)
-        {
-            return validation.Errors;
-        }
-
         var chart = await chartStore.GetAsync(id, cancellationToken);
         if (chart is null)
         {
@@ -101,26 +89,6 @@ public sealed class ChartService(IChartStore chartStore)
         }
 
         return Result.Deleted;
-    }
-
-    private static ErrorOr<Success> Validate(ChartRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return ChartErrors.NameRequired;
-        }
-
-        if (string.IsNullOrWhiteSpace(request.VizType))
-        {
-            return ChartErrors.VizTypeRequired;
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Dataset))
-        {
-            return ChartErrors.DatasetRequired;
-        }
-
-        return Result.Success;
     }
 
     private static string? Normalize(string? value) =>
